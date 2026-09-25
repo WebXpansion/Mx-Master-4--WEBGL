@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MX Master 4 — Showcase</title>
+<style>
+@font-face { font-family:'Brown'; font-weight:300; font-display:block; src:url(fonts/Brown-Light.woff2) format('woff2'); }
+@font-face { font-family:'Brown'; font-weight:500; font-display:block; src:url(fonts/Brown-Medium.woff2) format('woff2'); }
+@font-face { font-family:'Brown'; font-weight:900; font-display:block; src:url(fonts/Brown-Black.woff2) format('woff2'); }
+
+:root { --accent:#01fdcf; --bg:#04060a; --fg:#eef3f4; --dim:#7d8b90; --line:rgba(255,255,255,.12); }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--fg); font-family:'Brown',system-ui,sans-serif; font-weight:300; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+#gl { position:fixed; inset:0; z-index:0; width:100vw; height:100vh; display:block; }
+/* hauteur de defilement : la scene est fixe, seul le scroll avance le film */
+#scroll { position:relative; z-index:1; pointer-events:none; }
+#bar { position:fixed; right:0; top:0; width:2px; height:100vh; z-index:6; background:rgba(255,255,255,.06); }
+#bar i { display:block; width:100%; height:0; background:var(--accent); box-shadow:0 0 10px var(--accent); }
+.mono { font-weight:500; letter-spacing:.18em; text-transform:uppercase; }
+
+/* ---------- chrome */
+.brand { position:fixed; left:30px; top:26px; z-index:6; font-size:11px; color:var(--dim); pointer-events:none; }
+.brand b { display:block; font-weight:900; font-size:15px; letter-spacing:.02em; color:var(--fg); text-transform:none; }
+
+#chapters { position:fixed; right:30px; top:50%; transform:translateY(-50%); z-index:6; display:grid; gap:2px; }
+#chapters button {
+  display:flex; align-items:center; justify-content:flex-end; gap:14px;
+  background:none; border:0; cursor:pointer; padding:9px 0; color:var(--dim);
+  font:500 10px 'Brown',sans-serif; letter-spacing:.18em; text-transform:uppercase; transition:color .3s;
+}
+#chapters button i { display:block; width:26px; height:1px; background:currentColor; transition:width .35s, background .3s; }
+#chapters button:hover { color:var(--fg); }
+#chapters button.on { color:var(--accent); }
+#chapters button.on i { width:52px; background:var(--accent); }
+
+#title { position:fixed; left:30px; bottom:92px; z-index:6; pointer-events:none; max-width:min(38vw,460px); }
+#title h1 { font-weight:900; font-size:clamp(28px,3.4vw,52px); line-height:1.02; letter-spacing:-.025em; }
+#title p { margin-top:14px; font-size:14px; line-height:1.6; color:var(--dim); max-width:34ch; }
+#title .k { font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:500; margin-bottom:12px; display:block; }
+#title.swap h1, #title.swap p, #title.swap .k { opacity:0; transform:translateY(14px); filter:blur(8px); }
+#title h1, #title p, #title .k { transition:opacity .5s, transform .5s, filter .5s; }
+
+#hint { position:fixed; left:30px; bottom:30px; z-index:6; font-size:10px; color:var(--dim); letter-spacing:.16em; text-transform:uppercase; font-weight:500; }
+#hint b { color:var(--fg); font-weight:500; }
+#hud { position:fixed; right:30px; bottom:30px; z-index:6; font-size:10px; color:var(--dim); letter-spacing:.14em; text-align:right; font-weight:500; }
+#hud button { background:none; border:1px solid var(--line); color:var(--dim); font:500 9.5px 'Brown',sans-serif;
+  letter-spacing:.16em; text-transform:uppercase; padding:7px 12px; border-radius:99px; cursor:pointer; margin-left:7px; transition:.25s; }
+#hud button:hover { color:var(--fg); border-color:var(--accent); }
+#hud button.on { color:var(--accent); border-color:var(--accent); }
+
+/* ---------- legendes de pieces : ancrees sur des points 3D, projetees chaque image */
+#calls { position:fixed; inset:0; z-index:5; pointer-events:none; }
+.cal { position:absolute; left:0; top:0; will-change:transform,opacity; opacity:0; transition:opacity .35s; }
+.cal.on { opacity:1; }
+.cal u { position:absolute; left:0; top:0; width:7px; height:7px; margin:-3.5px 0 0 -3.5px; border-radius:99px;
+  background:var(--accent); box-shadow:0 0 0 4px rgba(1,253,207,.16), 0 0 14px var(--accent); display:block; }
+.cal u::after { content:''; position:absolute; inset:-3.5px; border-radius:99px; border:1px solid var(--accent);
+  animation:ping 2.2s cubic-bezier(.2,.7,.3,1) infinite; }
+@keyframes ping { 0% { transform:scale(1); opacity:.9 } 70%,100% { transform:scale(3.6); opacity:0 } }
+.cal s { position:absolute; left:0; top:0; height:1px; width:58px; transform-origin:0 0;
+  background:linear-gradient(90deg,var(--accent),rgba(1,253,207,.15)); display:block; }
+.cal b { position:absolute; top:-9px; white-space:nowrap; font:500 10px 'Brown',sans-serif;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--fg); text-shadow:0 1px 10px #04060a, 0 0 22px #04060a; }
+.cal b em { display:block; font-style:normal; color:#9fb0b4; letter-spacing:.1em; font-size:9px; margin-top:4px; }
+
+/* ---------- compteur du chapitre */
+#metric { position:fixed; right:30px; bottom:74px; z-index:6; text-align:right; pointer-events:none; }
+#metric b { display:block; font-weight:900; font-size:clamp(34px,5.4vw,78px); line-height:.92; letter-spacing:-.04em;
+  color:var(--fg); font-variant-numeric:tabular-nums; }
+#metric span { display:block; margin-top:8px; font:500 9.5px 'Brown',sans-serif; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--accent); }
+#metric.swap b, #metric.swap span { opacity:0; filter:blur(8px); }
+#metric b, #metric span { transition:opacity .45s, filter .45s; }
+@media (max-width:820px) { #metric { bottom:210px; } }
+
+#loader { position:fixed; inset:0; z-index:30; background:var(--bg); display:grid; place-items:center; transition:opacity .8s; }
+#loader.done { opacity:0; pointer-events:none; }
+.ld { display:grid; gap:16px; justify-items:center; }
+.ld span { font-size:10px; letter-spacing:.28em; text-transform:uppercase; color:var(--dim); font-weight:500; }
+.ld i { display:block; width:200px; height:1px; background:var(--line); position:relative; overflow:hidden; }
+.ld i b { position:absolute; inset:0 100% 0 0; background:var(--accent); transition:right .3s; }
+
+@media (max-width:820px) {
+  #title { max-width:none; right:30px; bottom:120px; }
+  #chapters { right:16px; }
+  #chapters button span { display:none; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<div id="scroll"></div>
+<div id="bar"><i id="barFill"></i></div>
+
+<div class="brand mono">Logitech<b>MX Master 4</b></div>
+
+<nav id="chapters"></nav>
+
+<div id="title">
+  <span class="k" id="tKicker">Chapter</span>
+  <h1 id="tHead">—</h1>
+  <p id="tBody"></p>
+</div>
+
+<div id="calls"></div>
+<div id="metric"><b id="mVal">—</b><span id="mUnit"></span></div>
+
+<div id="hint" class="mono"><b>Scroll</b> to play each part &nbsp;·&nbsp; <b>Drag</b> to look around</div>
+<div id="hud"><span id="fps"></span> <button id="bQual">High</button></div>
+
+<div id="loader"><div class="ld">
+  <span>Loading scene</span>
+  <i><b id="ldBar"></b></i>
+  <span id="ldPct" style="letter-spacing:.14em">0 %</span>
+</div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const damp = (dt, l) => 1 - Math.exp(-dt * l);
+const ease = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const V = () => new THREE.Vector3();
+const DEG = Math.PI / 180;
+const ACCENT = '#01fdcf';
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* ============================================================
+   Rendu
+   ============================================================ */
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(new THREE.Color('#04060a'), 0.035);
+const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.05, 200);
+
+/* ============================================================
+   Environnement — un vrai studio, pas une ambiante plate.
+   Des panneaux emissifs sont cuits en PMREM : c'est ce qui donne
+   au plastique et a l'alu des reflets orientes, avec le liseré
+   vert de la marque le long des aretes.
+   ============================================================ */
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+
+function studioEnv() {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color('#05070b');
+  const quad = new THREE.PlaneGeometry(1, 1);
+  const panel = (hex, gain, w, h, pos, rot) => {
+    const m = new THREE.Mesh(quad, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    m.material.color.set(hex).multiplyScalar(gain);
+    m.scale.set(w, h, 1);
+    m.position.set(pos[0], pos[1], pos[2]);
+    m.rotation.set(rot[0], rot[1], rot[2]);
+    s.add(m);
+  };
+  panel('#ffffff', 2.6, 16, 12, [0, 9, 0], [-Math.PI / 2, 0, 0]);        // softbox zenithale
+  panel('#eef7ff', 7.0, 8, 7, [7, 4, 6], [0, -0.85, 0]);                 // key, avant droite
+  panel('#ffffff', 16.0, 0.4, 9, [4.5, 4.5, -4], [0, -0.35, 0]);         // bande speculaire nette
+  panel(ACCENT, 12.0, 7, 6, [-8, 3, -5], [0, 2.25, 0]);                  // rim de marque, arriere gauche
+  panel('#dfe8ee', 1.4, 7, 7, [-7, 3.5, 5], [0, 1.05, 0]);               // fill neutre
+  panel(ACCENT, 3.0, 5, 4, [2, 1.2, -8], [0, 0.1, 0]);                   // kicker bas, en accent
+  return s;
+}
+const envRT = pmrem.fromScene(studioEnv(), 0.02);
+scene.environment = envRT.texture;
+scene.environmentIntensity = 1.0;
+
+/* ============================================================
+   Post-processing
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.7, 0.85);
+
+// grain + vignette + aberration chromatique + flash, en une passe
+const GradeShader = {
+  uniforms: {
+    tDiffuse: { value: null }, uTime: { value: 0 },
+    uVig: { value: 1.0 }, uGrain: { value: 0.028 }, uCA: { value: 1.0 },
+    uFlash: { value: 0 }, uSat: { value: 1.06 },
+  },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse; uniform float uTime, uVig, uGrain, uCA, uFlash, uSat;
+    varying vec2 vUv;
+    void main(){
+      vec2 d = vUv - 0.5;
+      float r2 = dot(d, d);
+      // l'aberration croit vers les bords, comme sur une vraie optique
+      float k = uCA * 0.0022 * r2 * 4.0;
+      vec3 c;
+      c.r = texture2D(tDiffuse, vUv + d * k).r;
+      c.g = texture2D(tDiffuse, vUv).g;
+      c.b = texture2D(tDiffuse, vUv - d * k).b;
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c = mix(vec3(l), c, uSat);
+      c *= mix(1.0, smoothstep(0.78, 0.08, r2), uVig);
+      float n = fract(sin(dot(vUv * 1024.0 + fract(uTime), vec2(12.9898, 78.233))) * 43758.5453);
+      c += (n - 0.5) * uGrain;
+      c += uFlash;
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+};
+const grade = new ShaderPass(GradeShader);
+
+let gtao = null;
+async function buildPost() {
+  // GTAO donne le contact et le creux dans les rainures ; son API bouge d'une
+  // version a l'autre, donc on degrade proprement si elle ne repond pas.
+  try {
+    const { GTAOPass } = await import('three/addons/postprocessing/GTAOPass.js');
+    gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+    gtao.output = GTAOPass.OUTPUT.Default;
+    gtao.blendIntensity = 0.85;
+    if (gtao.updateGtaoMaterial) gtao.updateGtaoMaterial({ radius: 0.16, distanceExponent: 1.2, thickness: 0.4, scale: 1.1, samples: 16 });
+    composer.addPass(gtao);
+  } catch (e) { console.warn('[showcase] GTAO indisponible :', e.message || e); }
+  composer.addPass(bloom);
+  composer.addPass(grade);
+  composer.addPass(new OutputPass());
+}
+
+/* ============================================================
+   Sol — miroir net près du contact, qui se dissout avec la distance.
+   Un vrai Reflector donne le reflet du produit ; un voile par-dessus
+   simule la rugosite croissante, qu'un miroir plan ne sait pas rendre.
+   ============================================================ */
+const mirror = new Reflector(new THREE.PlaneGeometry(80, 80), {
+  textureWidth: 1024, textureHeight: 1024, color: 0x4a5257,
+});
+mirror.rotation.x = -Math.PI / 2;
+mirror.position.y = 0.0;
+scene.add(mirror);
+
+const veilTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, 'rgba(4,6,10,0)');
+  g.addColorStop(0.32, 'rgba(4,6,10,.55)');
+  g.addColorStop(1, 'rgba(4,6,10,1)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
+})();
+const veil = new THREE.Mesh(new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshBasicMaterial({ map: veilTex, transparent: true, depthWrite: false, fog: false }));
+veil.rotation.x = -Math.PI / 2; veil.position.y = 0.002;
+scene.add(veil);
+
+// ombre portee reelle, recue sur un plan transparent au ras du miroir
+const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(30, 30),
+  new THREE.ShadowMaterial({ opacity: 0.55, transparent: true, fog: false }));
+shadowCatcher.rotation.x = -Math.PI / 2; shadowCatcher.position.y = 0.004;
+shadowCatcher.receiveShadow = true;
+scene.add(shadowCatcher);
+
+/* ============================================================
+   Lumieres — trois sources nommees, pilotees par chapitre
+   ============================================================ */
+const hemi = new THREE.HemisphereLight(0xcfdce4, 0x05070a, 0.16);
+const key = new THREE.SpotLight(0xffffff, 60, 0, 0.55, 0.9, 1.6);
+key.position.set(3.4, 6.2, 4.2); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 1; key.shadow.camera.far = 24;
+key.shadow.bias = -0.0006; key.shadow.normalBias = 0.022; key.shadow.radius = 3;
+const rim = new THREE.SpotLight(ACCENT, 90, 0, 0.5, 0.95, 1.6);
+rim.position.set(-4.6, 3.1, -4.4);
+const fill = new THREE.PointLight(0xdbe6ec, 14, 22, 1.8);
+fill.position.set(-4.2, 2.2, 3.6);
+const kick = new THREE.PointLight(ACCENT, 10, 18, 1.8);
+kick.position.set(2.4, 0.7, -4.2);
+scene.add(hemi, key, key.target, rim, rim.target, fill, kick);
+
+/* ============================================================
+   Poussiere — deux nappes a vitesses differentes, ce qui donne
+   la parallaxe quand la camera tourne
+   ============================================================ */
+function dustLayer(count, radius, size, speed, op) {
+  const pos = new Float32Array(count * 3), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const r = Math.pow(Math.random(), 0.6) * radius;
+    const a = Math.random() * Math.PI * 2;
+    pos[i * 3] = Math.cos(a) * r;
+    pos[i * 3 + 1] = Math.pow(Math.random(), 1.5) * 6.5 + 0.05;
+    pos[i * 3 + 2] = Math.sin(a) * r;
+    seed[i] = Math.random() * 100;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { uTime: { value: 0 }, uSize: { value: size }, uOp: { value: op }, uSpeed: { value: speed }, uColor: { value: new THREE.Color('#cfe8ea') } },
+    vertexShader: `
+      attribute float aSeed; uniform float uTime, uSize, uSpeed; varying float vF;
+      void main(){
+        vec3 p = position;
+        p.y += sin(uTime * uSpeed * 0.5 + aSeed) * 0.35;
+        p.x += sin(uTime * uSpeed * 0.31 + aSeed * 1.7) * 0.5;
+        p.z += cos(uTime * uSpeed * 0.27 + aSeed * 2.3) * 0.5;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        vF = 0.45 + 0.55 * sin(uTime * 1.6 + aSeed * 6.0);
+        gl_PointSize = uSize * (34.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform float uOp; uniform vec3 uColor; varying float vF;
+      void main(){
+        float d = length(gl_PointCoord - 0.5);
+        float a = smoothstep(0.5, 0.0, d) * uOp * vF;
+        if (a < 0.003) discard;
+        gl_FragColor = vec4(uColor * a, a);
+      }`,
+  });
+  const pts = new THREE.Points(g, m); pts.frustumCulled = false; scene.add(pts);
+  return pts;
+}
+const dust = [dustLayer(900, 16, 1.5, 1.0, 0.5), dustLayer(420, 7, 2.6, 0.55, 0.32)];
+
+/* ============================================================
+   Modele + injection du scan holographique dans ses materiaux
+   ============================================================ */
+const rig = new THREE.Group();          // pose du produit
+const spin = new THREE.Group();         // rotation libre
+rig.add(spin); scene.add(rig);
+const P = { meshes: [], shaders: [], radius: 0.8 };
+let ready = false;
+
+const scan = { y: -99, on: 0, speed: 1.5 };
+
+function injectScan(mat) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uScanY = { value: -99 };
+    sh.uniforms.uScanOn = { value: 0 };
+    sh.uniforms.uAccent = { value: new THREE.Color(ACCENT) };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
+      .replace('#include <project_vertex>', 'vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uScanY, uScanOn; uniform vec3 uAccent; varying vec3 vWPos;')
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        if (uScanOn > 0.001) {
+          float dy = vWPos.y - uScanY;
+          // front net qui monte, plus une trainee de grille sous le front
+          float line = smoothstep(0.035, 0.0, abs(dy));
+          float wake = smoothstep(0.55, 0.0, -dy) * step(dy, 0.0);
+          float grid = step(0.72, fract(vWPos.x * 26.0)) + step(0.72, fract(vWPos.z * 26.0));
+          gl_FragColor.rgb += uAccent * uScanOn * (line * 3.4 + wake * grid * 0.55 + wake * 0.12);
+        }`);
+    P.shaders.push(sh);
+  };
+  mat.needsUpdate = true;
+}
+
+/** Isole les k plus grosses composantes connexes d'un mesh : la molette et la
+ *  molette pouce vivent dans le mesh 0. L'axe de rotation sort d'une ACP. */
+function splitComponents(mesh, k) {
+  const g = mesh.geometry, pos = g.attributes.position, idx = g.index.array, n = pos.count;
+  const map = new Map(), rep2 = new Uint32Array(n);
+  for (let i = 0; i < n; i++) {
+    const key = Math.round(pos.getX(i) * 50) + ',' + Math.round(pos.getY(i) * 50) + ',' + Math.round(pos.getZ(i) * 50);
+    let r = map.get(key); if (r === undefined) { r = i; map.set(key, i); } rep2[i] = r;
+  }
+  const par = new Uint32Array(n); for (let i = 0; i < n; i++) par[i] = i;
+  const find = x => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = find(rep2[idx[t]]), b = find(rep2[idx[t + 1]]); par[a] = b;
+    const c = find(rep2[idx[t + 2]]); par[c] = find(b);
+  }
+  const count = new Map();
+  for (let i = 0; i < n; i++) { const r = find(rep2[i]); count.set(r, (count.get(r) || 0) + 1); }
+  const roots = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, k).map(e => e[0]);
+  const tris = roots.map(() => []), rest = [];
+  for (let t = 0; t < idx.length; t += 3) {
+    const j = roots.indexOf(find(rep2[idx[t]]));
+    (j >= 0 ? tris[j] : rest).push(idx[t], idx[t + 1], idx[t + 2]);
+  }
+  const sub = list => {
+    const ng = new THREE.BufferGeometry();
+    for (const [name, a] of Object.entries(g.attributes)) ng.setAttribute(name, a);
+    ng.setIndex(list); ng.computeBoundingSphere();
+    return ng;
+  };
+  mesh.geometry = sub(rest);
+  const holder = new THREE.Group();
+  holder.position.copy(mesh.position); holder.quaternion.copy(mesh.quaternion); holder.scale.copy(mesh.scale);
+  mesh.parent.add(holder);
+  return tris.map(list => {
+    const seen = new Set(), pts = [];
+    for (const i of list) if (!seen.has(i)) { seen.add(i); pts.push(V().fromBufferAttribute(pos, i)); }
+    const bb = new THREE.Box3().setFromPoints(pts), c = bb.getCenter(V());
+    const C = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (const p of pts) { const d = [p.x - c.x, p.y - c.y, p.z - c.z]; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a * 3 + b] += d[a] * d[b]; }
+    const tr = C[0] + C[4] + C[8];
+    const mul = (M, u) => V().set(M[0] * u.x + M[1] * u.y + M[2] * u.z, M[3] * u.x + M[4] * u.y + M[5] * u.z, M[6] * u.x + M[7] * u.y + M[8] * u.z);
+    const power = M => { let u = V().set(1, 0.3, 0.2).normalize(); for (let it = 0; it < 200; it++) u = mul(M, u).normalize(); return u; };
+    const vMax = power(C), vMin = power([tr - C[0], -C[1], -C[2], -C[3], tr - C[4], -C[5], -C[6], -C[7], tr - C[8]]);
+    const vMid = V().crossVectors(vMax, vMin).normalize();
+    const eig = u => u.dot(mul(C, u));
+    const v = eig(vMax) - eig(vMid) > eig(vMid) - eig(vMin) ? vMax : vMin;
+    const m = new THREE.Mesh(sub(list), mesh.material.clone());
+    m.castShadow = m.receiveShadow = true;
+    const pivot = new THREE.Group();
+    pivot.position.copy(c); m.position.copy(c).negate();
+    pivot.add(m); holder.add(pivot);
+    pivot.userData = { axis: v, size: bb.getSize(V()), mesh: m };
+    return pivot;
+  });
+}
+/** Boite monde d'un sous-maillage : computeBoundingBox ignore l'index et
+ *  engloberait tout le maillage d'origine, donc on parcourt nos triangles. */
+function worldBoxOf(mesh) {
+  const g = mesh.geometry, pos = g.attributes.position, idx = g.index.array;
+  mesh.updateWorldMatrix(true, false);
+  const bb = new THREE.Box3(), v = V(), seen = new Set();
+  for (const i of idx) { if (seen.has(i)) continue; seen.add(i); bb.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld)); }
+  return bb;
+}
+
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load('mouse-optimized.glb', gltf => {
+  const root = gltf.scene, meshes = [];
+  root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach(m => {
+    m.castShadow = m.receiveShadow = true;
+    const mat = m.material;
+    if (mat && mat.isMeshStandardMaterial) {
+      // vernis : c'est lui qui accroche la bande speculaire de l'environnement
+      mat.envMapIntensity = 1.25;
+      if ('clearcoat' in mat) { mat.clearcoat = 0.35; mat.clearcoatRoughness = 0.28; }
+      injectScan(mat);
+    }
+  });
+  P.meshes = meshes;
+  P.parents = meshes.map(m => m.parent);
+
+  // molette et molette pouce sont noyees dans le mesh 0 : on les sort sur leur pivot
+  const [wheel, thumb] = splitComponents(meshes[0], 2);
+  P.wheel = wheel; P.thumb = thumb;
+
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(V()), ctr = box.getCenter(V());
+  const s = 1.55 / size.z;
+  const wrap = new THREE.Group();
+  wrap.scale.setScalar(s);
+  wrap.position.set(-ctr.x * s, -box.min.y * s, -ctr.z * s);
+  wrap.add(root);
+  spin.add(wrap);
+  P.radius = Math.max(size.x, size.z) * s * 0.5;
+  key.target.position.set(0, 0.2, 0); rim.target.position.set(0, 0.2, 0);
+
+  // Points remarquables, lus sur la geometrie reelle plutot que devines : la boite
+  // monde de chaque piece donne la face que la camera voit, donc ou poser la pastille.
+  scene.updateMatrixWorld(true);
+  const full = new THREE.Box3(); meshes.forEach(m => full.expandByObject(m));
+  const bw = P.wheel.userData.mesh, bt = P.thumb.userData.mesh;
+  const bbW = worldBoxOf(bw), bbT = worldBoxOf(bt), bbP = new THREE.Box3().setFromObject(meshes[6]);
+  F.center = full.getCenter(V());
+  F.wheelC = bbW.getCenter(V());
+  F.wheel = V().set(F.wheelC.x, bbW.max.y - 0.01, F.wheelC.z);        // haut de la molette
+  F.thumb = V().set(bbT.min.x + 0.01, bbT.getCenter(V()).y, bbT.getCenter(V()).z);
+  F.panel = V().set(bbP.min.x + 0.02, bbP.getCenter(V()).y, bbP.getCenter(V()).z);
+  F.port = V().set(0, full.min.y + 0.13, full.min.z + 0.02);          // nez avant, port USB-C
+  F.panelN = V().set(-1, 0.35, 0).normalize();                        // le repose-pouce regarde a gauche et vers le haut
+
+  // Les effets des chapitres ne sont visibles qu'une fois arrives : sans cette
+  // compilation prealable, leur premiere image gele le film au moment precis ou
+  // on entre dans le chapitre. On les montre une fois, hors ecran de temps.
+  warmup();
+
+  ready = true;
+  $('#loader').classList.add('done');
+  const i0 = sampleChapters();
+  cam.az = tgtC.az; cam.el = tgtC.el; cam.r = tgtC.r; cam.tgt.copy(tgtC.tgt);
+  spin.rotation.y = tgtSpin * DEG;
+  Object.assign(look, { keyI: lookT.keyI, rimI: lookT.rimI, fillI: lookT.fillI, kickI: lookT.kickI, fog: lookT.fog, exp: lookT.exp });
+  enterChapter(i0);
+}, e => {
+  if (e.total) { const p = e.loaded / e.total; $('#ldBar').style.right = (1 - p) * 100 + '%'; $('#ldPct').textContent = Math.round(p * 100) + ' %'; }
+}, err => { $('#ldPct').textContent = 'Error: ' + (err.message || err); });
+
+/* ============================================================
+   VFX — onde de choc, etincelles, eclat
+   ============================================================ */
+const shockGeo = new THREE.RingGeometry(0.72, 1, 96);
+const shocks = [];
+for (let i = 0; i < 6; i++) {
+  const m = new THREE.Mesh(shockGeo, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, fog: false,
+    uniforms: { uK: { value: 1 }, uColor: { value: new THREE.Color(ACCENT) } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader: `uniform float uK; uniform vec3 uColor; varying vec2 vUv;
+      void main(){
+        float edge = smoothstep(0.0, 0.35, vUv.y) * smoothstep(1.0, 0.65, vUv.y);
+        float a = edge * pow(1.0 - uK, 2.0);
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor * a * 2.2, a);
+      }`,
+  }));
+  m.rotation.x = -Math.PI / 2; m.visible = false; m.renderOrder = 4;
+  scene.add(m); shocks.push(m);
+}
+function shockwave(pos, maxR, life) {
+  const m = shocks.find(x => !x.visible) || shocks[0];
+  m.position.copy(pos); m.visible = true;
+  m.userData = { t: 0, life, maxR };
+}
+
+const SPARK_N = 260;
+const sparkPos = new Float32Array(SPARK_N * 3), sparkVel = new Float32Array(SPARK_N * 3), sparkLife = new Float32Array(SPARK_N);
+const sparkGeo = new THREE.BufferGeometry();
+sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+sparkGeo.setAttribute('aLife', new THREE.BufferAttribute(sparkLife, 1));
+const sparks = new THREE.Points(sparkGeo, new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+  uniforms: { uColor: { value: new THREE.Color(ACCENT) } },
+  vertexShader: `attribute float aLife; varying float vL;
+    void main(){ vL = aLife; vec4 mv = modelViewMatrix * vec4(position,1.0);
+      gl_PointSize = (2.0 + aLife * 7.0) * (34.0 / -mv.z);
+      gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform vec3 uColor; varying float vL;
+    void main(){ if (vL <= 0.0) discard;
+      float d = length(gl_PointCoord - 0.5);
+      float a = smoothstep(0.5, 0.0, d) * vL;
+      gl_FragColor = vec4(mix(uColor, vec3(1.0), 0.45 * vL) * a * 2.4, a); }`,
+}));
+sparks.frustumCulled = false; scene.add(sparks);
+let sparkHead = 0;
+function burst(pos, n, power) {
+  for (let i = 0; i < n; i++) {
+    const k = sparkHead = (sparkHead + 1) % SPARK_N;
+    sparkPos[k * 3] = pos.x; sparkPos[k * 3 + 1] = pos.y; sparkPos[k * 3 + 2] = pos.z;
+    const a = Math.random() * Math.PI * 2, e = rnd(0.15, 1);
+    const sp = rnd(0.6, 2.4) * power;
+    sparkVel[k * 3] = Math.cos(a) * sp * (1 - e * 0.5);
+    sparkVel[k * 3 + 1] = e * sp * 1.15;
+    sparkVel[k * 3 + 2] = Math.sin(a) * sp * (1 - e * 0.5);
+    sparkLife[k] = 1;
+  }
+}
+function updateSparks(dt) {
+  let any = false;
+  for (let i = 0; i < SPARK_N; i++) {
+    if (sparkLife[i] <= 0) continue;
+    any = true;
+    sparkLife[i] -= dt * 0.85;
+    sparkVel[i * 3 + 1] -= dt * 2.6;                       // gravite
+    for (let a = 0; a < 3; a++) { sparkVel[i * 3 + a] *= 1 - dt * 1.4; sparkPos[i * 3 + a] += sparkVel[i * 3 + a] * dt; }
+    if (sparkPos[i * 3 + 1] < 0.015) {                     // rebond mou sur le sol
+      sparkPos[i * 3 + 1] = 0.015; sparkVel[i * 3 + 1] *= -0.32;
+    }
+    if (sparkLife[i] < 0) sparkLife[i] = 0;
+  }
+  if (any) { sparkGeo.attributes.position.needsUpdate = true; sparkGeo.attributes.aLife.needsUpdate = true; }
+}
+
+/* ============================================================
+   Chapitres — chacun porte son cadrage ET son ambiance lumineuse.
+   La camera y va en orbite amortie, pas en teleportation.
+   ============================================================ */
+const CH = [
+  { k: 'Overview', h: 'Built to be felt.', b: 'A machined shell, a magnetic wheel and a thumb panel that answers back. Scroll to walk the parts.',
+    az: -186, el: 22, r: 4.1, tgt: [0, 0.17, 0], spin: 0, sweep: 82,
+    keyI: 60, rimI: 90, fillI: 14, kickI: 10, fog: 0.035, exp: 1.05,
+    demo: 'parts', mv: 4, mu: 'KEY PARTS' },
+
+  { k: 'Haptic Sense', h: 'Every action has a feel.', b: 'The thumb panel answers each gesture with a response you can feel under the finger.',
+    az: -104, el: 15, r: 2.7, tgt: [-0.12, 0.25, 0], spin: -14,
+    keyI: 34, rimI: 190, fillI: 6, kickI: 6, fog: 0.05, exp: 1.0,
+    demo: 'haptic', mv: 8, mu: 'FEEDBACK PATTERNS' },
+
+  { k: 'MagSpeed', h: 'A thousand lines, one spin.', b: 'Electromagnetic steel, weighted and silent. Ratcheted for precision, then free-spinning for distance.',
+    az: 150, el: 34, r: 2.8, tgt: [0.10, 0.30, -0.24], spin: 22, sweep: 16,
+    keyI: 90, rimI: 70, fillI: 18, kickI: 8, fog: 0.03, exp: 1.12,
+    demo: 'wheel', mv: 1000, mu: 'LINES PER SECOND' },
+
+  { k: 'Darkfield 8K', h: 'Glass is a surface now.', b: 'Tracking on virtually anything, down to 4 mm glass. The sensor reads the whole body, edge to edge.',
+    az: 40, el: 7, r: 3.1, tgt: [0, 0.24, 0], spin: -8, sweep: -26,
+    keyI: 26, rimI: 150, fillI: 4, kickI: 16, fog: 0.06, exp: 0.98,
+    demo: 'scan', mv: 8000, mu: 'DPI' },
+
+  { k: '70 days', h: 'Two months between charges.', b: 'A 650 mAh cell, and a minute on USB-C buys three hours. Energy settles into the frame.',
+    az: 84, el: 22, r: 4.8, tgt: [0, 0.3, 0], spin: 0, sweep: 34,
+    keyI: 26, rimI: 84, fillI: 11, kickI: 10, fog: 0.028, exp: 1.0,
+    demo: 'charge', mv: 70, mu: 'DAYS ON ONE CHARGE' },
+];
+
+const cam = { az: -38, el: 16, r: 6.5, tgt: V(0, 0.26, 0) };          // etat courant, amorti
+const tgtC = { az: -38, el: 16, r: 4.4, tgt: V(0, 0.26, 0) };         // cible posee par le scroll
+const off = { az: 0, el: 0 };                                          // ecart libre ajoute par le drag
+const angDiff = (a, b) => ((b - a + 540) % 360) - 180;                 // chemin le plus court entre deux azimuts
+const look = { keyI: 60, rimI: 90, fillI: 14, kickI: 10, fog: 0.035, exp: 1.05 };
+const lookT = { ...look };
+let chapter = -1, flash = 0, shake = 0, tgtSpin = 0, local = 0;
+
+/* Chaque chapitre occupe un segment de scroll. Les 62 premiers pour cent du
+   segment sont un PALIER : la camera ne bouge plus et la demonstration du
+   chapitre se joue, image par image, au rythme du scroll. Le reste du segment
+   est le voyage vers le chapitre suivant. C'est ce palier qui rend chaque
+   partie lisible : on a le temps de la regarder se derouler. */
+const HOLD = 0.62;
+function scrollMax() { return Math.max(1, document.body.scrollHeight - innerHeight); }
+function rawP() { return clamp(scrollY / scrollMax()) * CH.length; }
+
+function sampleChapters() {
+  const raw = rawP();
+  const i = Math.min(CH.length - 1, Math.floor(raw));
+  const u = clamp(raw - i, 0, 1);
+  const j = Math.min(CH.length - 1, i + 1);
+  const t = i === CH.length - 1 ? 0 : ease(clamp((u - HOLD) / (1 - HOLD)));
+  local = clamp(u / HOLD);                                   // avancement de la demo du chapitre
+  const A = CH[i], B = CH[j];
+  const azA = A.az + (A.sweep || 0) * local;               // balayage interne au palier
+  tgtC.az = azA + angDiff(azA, B.az) * t;
+  tgtC.el = lerp(A.el, B.el, t);
+  tgtC.r = lerp(A.r, B.r, t);
+  tgtC.tgt.set(lerp(A.tgt[0], B.tgt[0], t), lerp(A.tgt[1], B.tgt[1], t), lerp(A.tgt[2], B.tgt[2], t));
+  tgtSpin = A.spin + (B.spin - A.spin) * t;
+  lookT.keyI = lerp(A.keyI, B.keyI, t);
+  lookT.rimI = lerp(A.rimI, B.rimI, t);
+  lookT.fillI = lerp(A.fillI, B.fillI, t);
+  lookT.kickI = lerp(A.kickI, B.kickI, t);
+  lookT.fog = lerp(A.fog, B.fog, t);
+  lookT.exp = lerp(A.exp, B.exp, t);
+  return i;
+}
+
+function enterChapter(i) {
+  if (i === chapter) return;
+  const prev = chapter; chapter = i;
+  const c = CH[i];
+  const t = $('#title'); t.classList.add('swap');
+  setTimeout(() => {
+    $('#tKicker').textContent = c.k; $('#tHead').textContent = c.h; $('#tBody').textContent = c.b;
+    $('#mUnit').textContent = c.mu;
+    t.classList.remove('swap');
+  }, 220);
+  document.querySelectorAll('#chapters button').forEach((b, k) => b.classList.toggle('on', k === i));
+  if (prev >= 0) whoosh();
+  resetDemos();
+}
+function goChapter(i) {
+  scrollTo({ top: ((i + HOLD * 0.45) / CH.length) * scrollMax(), behavior: 'smooth' });
+}
+
+
+/* ============================================================
+   Demonstrations — une par chapitre, jouee par le scroll.
+   Le palier du chapitre fournit "local" (0 -> 1) : chaque demo
+   s'y deroule image par image, donc on la voit vraiment.
+   ============================================================ */
+const F = {};                                   // points remarquables du produit, en monde
+const TAU = Math.PI * 2;
+const ringShader = (color, extra) => new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  blending: THREE.AdditiveBlending, fog: false,
+  uniforms: Object.assign({ uK: { value: 0 }, uColor: { value: new THREE.Color(color) } }, extra || {}),
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: 'uniform float uK; uniform vec3 uColor; varying vec2 vUv;' +
+    'void main(){ float e = smoothstep(0.0,0.3,vUv.y)*smoothstep(1.0,0.7,vUv.y);' +
+    'float a = e * pow(1.0-uK, 1.8); if(a<0.004) discard; gl_FragColor = vec4(uColor*a*2.6, a); }',
+});
+
+/* ---------- 1. Overview : legendes de pieces ---------- */
+const CALLS = [
+  { k: 'port', t: 'USB-C', s: '1 min gives 3 hours' },
+  { k: 'wheel', t: 'MagSpeed wheel', s: 'Electromagnetic ratchet' },
+  { k: 'thumb', t: 'Thumb wheel', s: 'Horizontal scroll' },
+  { k: 'panel', t: 'Haptic Sense', s: 'Tactile feedback panel' },
+];
+const callEls = CALLS.map(c => {
+  const d = document.createElement('div');
+  d.className = 'cal';
+  d.innerHTML = '<u></u><s></s><b>' + c.t + '<em>' + c.s + '</em></b>';
+  $('#calls').appendChild(d);
+  return d;
+});
+const pScreen = V(), cDir = V(), cNorm = V();
+let callsShown = 0;
+
+const LEAD = 62;                                         // longueur du trait de rappel
+const callW = new Array(CALLS.length).fill(0);           // largeur mesuree des etiquettes
+
+/* La pastille reste sur la piece ; seule l'etiquette choisit son cote. Elle part
+   a l'oppose du produit, bascule si elle sortirait de l'ecran, et bascule encore
+   si elle allait se poser sur le bloc de titre. */
+function updateCalls(on) {
+  if (!on || !ready) { callEls.forEach(e => e.classList.remove('on')); callsShown = 0; return; }
+  callsShown = 0;
+  const cx = (pScreen.copy(F.center).project(camera).x * 0.5 + 0.5) * innerWidth;
+  const tb = $('#title').getBoundingClientRect();
+  for (let i = 0; i < CALLS.length; i++) {
+    const el = callEls[i], w = F[CALLS[i].k];
+    const due = local > (i + 0.35) / (CALLS.length + 0.6);
+    if (!w || !due) { el.classList.remove('on'); continue; }
+    pScreen.copy(w).project(camera);
+    if (pScreen.z > 1) { el.classList.remove('on'); continue; }
+    // la piece est-elle tournee vers nous ? sa normale sortante part du centre du produit
+    cNorm.copy(w).sub(F.center).normalize();
+    cDir.copy(camera.position).sub(w).normalize();
+    if (cNorm.dot(cDir) < 0.02) { el.classList.remove('on'); continue; }
+
+    const x = (pScreen.x * 0.5 + 0.5) * innerWidth, y = (-pScreen.y * 0.5 + 0.5) * innerHeight;
+    const lab = el.querySelector('b');
+    if (!callW[i]) callW[i] = lab.offsetWidth || 150;
+    const lw = callW[i];
+    const bad = side => {
+      const a = side > 0 ? x + LEAD : x - LEAD - lw;        // bord gauche de l'etiquette
+      if (a < 14 || a + lw > innerWidth - 14) return 2;
+      return (y > tb.top - 14 && y < tb.bottom + 14 && a < tb.right + 14 && a + lw > tb.left - 14) ? 1 : 0;
+    };
+    let side = x < cx ? -1 : 1;
+    if (bad(side) && !bad(-side)) side = -side;
+    // les deux cotes butent sur le titre : en dernier recours l'etiquette monte
+    const rise = bad(side) === 1 ? clamp(y - tb.top + 26, 0, 78) : 0;
+
+    el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+    el.querySelector('s').style.transform = side > 0 ? 'none' : 'scaleX(-1)';
+    lab.style.left = (side > 0 ? LEAD + 4 : -(LEAD + 4 + lw)) + 'px';
+    lab.style.top = (-9 - rise) + 'px';
+    el.classList.add('on'); callsShown++;
+  }
+}
+
+/* ---------- 2. Haptic Sense : ondes depuis le panneau ---------- */
+const hapt = [];
+for (let i = 0; i < 7; i++) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.62, 1, 72), ringShader(ACCENT));
+  m.visible = false; m.renderOrder = 5; m.frustumCulled = false;
+  scene.add(m); hapt.push(m);
+}
+const hapGlow = new THREE.Mesh(new THREE.CircleGeometry(0.095, 48), new THREE.MeshBasicMaterial({
+  color: new THREE.Color(ACCENT), transparent: true, opacity: 0, blending: THREE.AdditiveBlending,
+  depthWrite: false, fog: false,
+}));
+hapGlow.renderOrder = 5; hapGlow.frustumCulled = false; scene.add(hapGlow);
+let hapStep = -1, hapFlash = 0;
+
+function emitHaptic() {
+  const m = hapt.find(x => !x.visible) || hapt[0];
+  m.position.copy(F.panel || V());
+  m.lookAt(V().copy(m.position).add(F.panelN || V().set(-1, 0.4, 0)));
+  m.visible = true; m.userData = { t: 0, life: 1.15, maxR: 0.55 };
+  hapFlash = 1; shake = 0.28; thump(0.45);
+}
+function updateHaptic(on, dt) {
+  hapt.forEach(m => {
+    if (!m.visible) return;
+    const u = m.userData; u.t += dt;
+    const k = u.t / u.life;
+    if (k >= 1) { m.visible = false; return; }
+    m.scale.setScalar(0.06 + ease(k) * u.maxR);
+    m.material.uniforms.uK.value = k;
+  });
+  hapFlash *= Math.exp(-dt * 3.4);
+  if (!on || !ready) { hapStep = -1; hapGlow.material.opacity = 0; return; }
+  hapGlow.position.copy(F.panel); hapGlow.lookAt(V().copy(F.panel).add(F.panelN));
+  hapGlow.material.opacity = 0.05 + hapFlash * 0.2;
+  hapGlow.scale.setScalar(1 + hapFlash * 0.5);
+  const step = Math.floor(local * 8.99);
+  if (step !== hapStep) { hapStep = step; if (local > 0.02) emitHaptic(); }
+}
+
+
+/* ---------- 3. MagSpeed : cran par cran, puis roue libre ---------- */
+const DETENTS = 24;
+let wheelAng = 0, wheelDet = -1;
+const wheelRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 96), ringShader('#ffffff'));
+wheelRing.visible = false; wheelRing.renderOrder = 5; wheelRing.frustumCulled = false;
+scene.add(wheelRing);
+let wheelFlash = 0;
+
+function updateWheel(on, dt) {
+  wheelFlash *= Math.exp(-dt * 6);
+  if (!on || !ready || !P.wheel) { wheelRing.visible = false; return; }
+  // premiere moitie : chaque cran est un pas net. seconde moitie : la roue se libere.
+  const ratchet = clamp(local / 0.5);
+  const free = clamp((local - 0.5) / 0.5);
+  const turns = ratchet * 1.6 + ease(free) * 7.5;
+  const raw = turns * TAU;
+  const q = Math.round(raw / (TAU / DETENTS)) * (TAU / DETENTS);
+  wheelAng = lerp(q, raw, ease(free));
+  P.wheel.rotation.set(0, 0, 0);
+  P.wheel.rotateOnAxis(P.wheel.userData.axis, wheelAng);
+  const det = Math.floor(raw / (TAU / DETENTS));
+  if (det !== wheelDet) { wheelDet = det; if (free < 0.55 && local > 0.02) { wheelFlash = 1; tick(0.5 - free * 0.4); } }
+  wheelRing.visible = true;
+  wheelRing.position.copy(F.wheelC);
+  wheelRing.quaternion.copy(P.wheel.getWorldQuaternion(new THREE.Quaternion()));
+  wheelRing.rotateY(Math.PI / 2);
+  wheelRing.scale.setScalar(0.19 + wheelFlash * 0.05 + free * 0.06);
+  wheelRing.material.uniforms.uK.value = 1 - (0.28 + wheelFlash * 0.55 + free * 0.3);
+}
+
+/* ---------- 4. Darkfield : le front de scan suit le scroll ---------- */
+const gridMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+  uniforms: { uK: { value: 0 }, uTime: { value: 0 }, uColor: { value: new THREE.Color(ACCENT) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: /* glsl */`
+    uniform float uK, uTime; uniform vec3 uColor; varying vec2 vUv;
+    void main(){
+      vec2 p = (vUv - 0.5) * 2.0;
+      float d = length(p);
+      // la grille se devoile en cercle, un liseré marque le front
+      float reveal = smoothstep(uK + 0.06, uK - 0.06, d);
+      vec2 g = abs(fract(vUv * 26.0) - 0.5);
+      float line = smoothstep(0.045, 0.0, min(g.x, g.y));
+      float front = smoothstep(0.05, 0.0, abs(d - uK)) * 1.6;
+      float fade = smoothstep(1.0, 0.25, d);
+      float a = (line * 0.34 + front) * reveal * fade;
+      if (a < 0.004) discard;
+      gl_FragColor = vec4(uColor * a * 1.9, a);
+    }`,
+});
+const grid = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 5.2), gridMat);
+grid.rotation.x = -Math.PI / 2; grid.position.y = 0.004; grid.visible = false;
+grid.renderOrder = 2; scene.add(grid);
+
+function updateScanChapter(on) {
+  grid.visible = on;
+  if (!on) { scan.on = 0; scan.y = -99; return; }
+  gridMat.uniforms.uK.value = ease(clamp(local * 1.15)) * 1.05;
+  // le front de scan est colle au scroll : on le fait monter, redescendre, remonter
+  const sweep = local < 0.5 ? local * 2 : 1 - (local - 0.5) * 2 * 0.55;
+  scan.on = 1;
+  scan.y = -0.1 + sweep * 1.15;
+}
+
+/* ---------- 5. 70 days : l'anneau de charge se remplit ---------- */
+const chargeMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false,
+  uniforms: { uK: { value: 0 }, uTime: { value: 0 }, uColor: { value: new THREE.Color(ACCENT) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: /* glsl */`
+    uniform float uK, uTime; uniform vec3 uColor; varying vec2 vUv;
+    void main(){
+      float band = smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.78, vUv.y);
+      float ang = vUv.x;                       // 0..1 le long de l'anneau
+      float fill = step(ang, uK);
+      float head = smoothstep(0.015, 0.0, abs(ang - uK)) * 1.25;
+      float idle = 0.05 + 0.03 * sin(uTime * 2.2 + ang * 40.0);
+      float a = band * (fill * 0.3 + head + idle);
+      if (a < 0.004) discard;
+      gl_FragColor = vec4(uColor * a * 1.1, a);
+    }`,
+});
+const chargeRing = new THREE.Mesh(new THREE.RingGeometry(0.82, 0.88, 180, 1), chargeMat);
+chargeRing.rotation.x = -Math.PI / 2; chargeRing.position.y = 0.006; chargeRing.visible = false;
+chargeRing.renderOrder = 4; scene.add(chargeRing);
+let chargeStep = -1;
+
+function updateCharge(on, dt) {
+  chargeRing.visible = on;
+  if (!on || !ready) { chargeStep = -1; return; }
+  chargeMat.uniforms.uK.value = ease(clamp(local * 1.06));
+  chargeMat.uniforms.uTime.value = time;
+  const step = Math.floor(local * 11.99);
+  if (step !== chargeStep) {
+    chargeStep = step;
+    if (local > 0.03) {
+      const a = Math.random() * TAU, r = 0.84;
+      burst(V().set(Math.cos(a) * r, 0.03, Math.sin(a) * r), 10, 0.5);
+    }
+  }
+  if (local > 0.97 && chargeStep < 90) {
+    chargeStep = 99;
+    shockwave(V().set(0, 0.02, 0), 2.4, 1.3); burst(V().set(0, 0.12, 0), 34, 0.6);
+    flash = 0.025;
+  }
+}
+
+/* ---------- orchestration ---------- */
+function warmup() {
+  const list = [grid, chargeRing, wheelRing, hapGlow, ...hapt, ...shocks];
+  const was = list.map(o => o.visible);
+  list.forEach(o => { o.visible = true; });
+  renderer.compile(scene, camera);
+  list.forEach((o, i) => { o.visible = was[i]; });
+}
+function resetDemos() {
+  hapStep = -1; wheelDet = -1; chargeStep = -1;
+  scan.on = 0; scan.y = -99;
+  if (P.wheel) P.wheel.rotation.set(0, 0, 0);
+}
+const fmt = n => n.toLocaleString('en-US');
+function updateDemos(dt) {
+  const d = chapter >= 0 ? CH[chapter].demo : '';
+  updateCalls(d === 'parts');
+  updateHaptic(d === 'haptic', dt);
+  updateWheel(d === 'wheel', dt);
+  updateScanChapter(d === 'scan');
+  updateCharge(d === 'charge', dt);
+  if (chapter >= 0) {
+    const c = CH[chapter];
+    const v = d === 'parts' ? callsShown : Math.round(c.mv * ease(clamp(local * 1.08)));
+    $('#mVal').textContent = fmt(v);
+  }
+}
+
+$('#scroll').style.height = (CH.length * 165) + 'vh';
+const nav = $('#chapters');
+CH.forEach((c, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `<span>${c.k}</span><i></i>`;
+  b.addEventListener('click', () => { audio(); goChapter(i); });
+  nav.appendChild(b);
+});
+addEventListener('keydown', e => {
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= CH.length) goChapter(n - 1);
+});
+
+function pulseAt() {
+  const p = V().set(0, 0.22, 0).applyMatrix4(spin.matrixWorld);
+  shockwave(V().set(p.x, 0.02, p.z), 2.2, 1.1);
+  burst(p, 34, 0.55);
+  flash = 0.06; shake = 0.5; thump(0.9);
+}
+
+/* ---- son : impact sourd et souffle de transition */
+let actx = null;
+const audio = () => { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; };
+let sfx = true;
+function thump(s) {
+  if (!sfx || !actx || actx.state !== 'running') return;
+  const a = actx, t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain();
+  o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(34, t + 0.16);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16 * s, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.4);
+}
+function tick(s) {
+  if (!sfx || !actx || actx.state !== 'running') return;
+  const a = actx, t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+  o.type = 'square'; o.frequency.setValueAtTime(2100, t); o.frequency.exponentialRampToValueAtTime(760, t + 0.02);
+  f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 2.4;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.035 * s, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(f).connect(g).connect(a.destination); o.start(t); o.stop(t + 0.06);
+}
+function whoosh() {
+  if (!sfx || !actx || actx.state !== 'running') return;
+  const a = actx, t = a.currentTime, n = Math.floor(a.sampleRate * 0.7);
+  const buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource(); src.buffer = buf;
+  const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(240, t); bp.frequency.exponentialRampToValueAtTime(2600, t + 0.42);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.055, t + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
+  src.connect(bp).connect(g).connect(a.destination); src.start(t); src.stop(t + 0.7);
+}
+
+/* ============================================================
+   Interaction — orbite a inertie, molette, clic sur le produit
+   ============================================================ */
+const drag = { on: false, x: 0, y: 0, vx: 0, vy: 0, moved: 0 };
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const isUI = t => t.closest && t.closest('button, a, #chapters, #hud');
+
+addEventListener('pointerdown', e => {
+  audio();
+  if (isUI(e.target)) return;
+  if (e.pointerType !== 'mouse') { drag.on = false; return; }   // le doigt reste au scroll
+  drag.on = true; drag.x = e.clientX; drag.y = e.clientY; drag.moved = 0;
+});
+addEventListener('pointermove', e => {
+  if (!drag.on) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  drag.moved += Math.abs(dx) + Math.abs(dy);
+  off.az = clamp(off.az - dx * 0.28, -120, 120);
+  off.el = clamp(off.el + dy * 0.18, -34, 34);
+  drag.vx = -dx * 0.28; drag.vy = dy * 0.18;
+});
+addEventListener('pointerup', e => {
+  if (!drag.on) return;
+  drag.on = false;
+  if (drag.moved < 6 && ready && !isUI(e.target)) {
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    if (ray.intersectObject(spin, true).length) pulseAt();
+  }
+});
+
+let quality = 1;
+$('#bQual').addEventListener('click', () => {
+  quality = quality === 1 ? 0 : 1;
+  $('#bQual').textContent = quality ? 'High' : 'Fast';
+  renderer.setPixelRatio(quality ? Math.min(devicePixelRatio, 2) : 1);
+  if (gtao) gtao.enabled = !!quality;
+  dust.forEach(d => d.visible = !!quality);
+  onResize();
+});
+
+/* ============================================================
+   Boucle
+   ============================================================ */
+function onResize() {
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  if (gtao) gtao.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', onResize);
+
+const camPos = V(), noiseT = V(), barFill = $('#barFill');
+let t0 = performance.now(), time = 0, frameN = 0, fpsAcc = 0, fpsN = 0;
+
+function frame() {
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - t0) / 1000); t0 = now;
+  time += dt; frameN++;
+
+  // ---- le scroll pose le cadrage ; le drag n'ajoute qu'un ecart qui se resorbe
+  const idx = sampleChapters();
+  if (ready && idx !== chapter) enterChapter(idx);
+  barFill.style.height = (clamp(scrollY / scrollMax()) * 100) + '%';
+
+  if (!drag.on) {
+    off.az = clamp(off.az + drag.vx, -120, 120);
+    off.el = clamp(off.el + drag.vy, -34, 34);
+    drag.vx *= 0.92; drag.vy *= 0.92;
+    const back = damp(dt, 0.55);                 // le cadrage du film reprend la main en douceur
+    off.az -= off.az * back; off.el -= off.el * back;
+  }
+
+  const a = damp(dt, 3.2);
+  cam.az += (tgtC.az + off.az - cam.az) * a;
+  cam.el += (clamp(tgtC.el + off.el, -55, 74) - cam.el) * a;
+  cam.r += (tgtC.r - cam.r) * a;
+  cam.tgt.lerp(tgtC.tgt, a);
+
+  shake *= Math.exp(-dt * 7);
+  const az = cam.az * DEG, el = cam.el * DEG;
+  camPos.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(cam.r).add(cam.tgt);
+  // micro-flottement facon camera portee, plus le tremblement des impacts
+  noiseT.set(Math.sin(time * 0.7) * 0.012 + Math.sin(time * 41) * 0.004 * shake,
+             Math.cos(time * 0.53) * 0.014 + Math.cos(time * 37) * 0.004 * shake,
+             Math.sin(time * 0.61) * 0.012);
+  camera.position.copy(camPos).add(noiseT);
+  camera.lookAt(cam.tgt);
+
+  // ---- ambiance du chapitre
+  const la = damp(dt, 2.4);
+  look.keyI += (lookT.keyI - look.keyI) * la;
+  look.rimI += (lookT.rimI - look.rimI) * la;
+  look.fillI += (lookT.fillI - look.fillI) * la;
+  look.kickI += (lookT.kickI - look.kickI) * la;
+  look.fog += (lookT.fog - look.fog) * la;
+  look.exp += (lookT.exp - look.exp) * la;
+  key.intensity = look.keyI; rim.intensity = look.rimI;
+  fill.intensity = look.fillI; kick.intensity = look.kickI;
+  scene.fog.density = look.fog;
+  renderer.toneMappingExposure = look.exp;
+  dust.forEach(d => { d.material.uniforms.uTime.value = time; });
+
+  // ---- orientation du produit : posee par le chapitre, jamais automatique
+  spin.rotation.y += (tgtSpin * DEG - spin.rotation.y) * damp(dt, 2.6);
+
+  // ---- demonstrations du chapitre (elles posent scan.y, la molette, les ondes...)
+  updateDemos(dt);
+  P.shaders.forEach(sh => {
+    if (!sh.uniforms.uScanY) return;
+    sh.uniforms.uScanY.value = scan.y;
+    sh.uniforms.uScanOn.value = scan.on;
+  });
+
+  // ---- VFX
+  for (const m of shocks) {
+    if (!m.visible) continue;
+    const u = m.userData;
+    u.t += dt;
+    const k = u.t / u.life;
+    if (k >= 1) { m.visible = false; continue; }
+    m.scale.setScalar(0.08 + ease(k) * u.maxR);
+    m.material.uniforms.uK.value = k;
+  }
+  updateSparks(dt);
+
+  // ---- grade
+  flash *= Math.exp(-dt * 5);
+  grade.uniforms.uTime.value = time;
+  grade.uniforms.uFlash.value = flash;
+  bloom.strength = 0.5 + flash * 5;
+
+  // GTAO est la passe la plus fragile de la chaine : si elle jette, on la coupe
+  // plutot que de laisser la boucle mourir et la page se figer.
+  try { composer.render(); }
+  catch (err) {
+    if (gtao && gtao.enabled !== false) { console.warn('[showcase] GTAO desactive :', err.message || err); gtao.enabled = false; }
+    else throw err;
+  }
+
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.6) { $('#fps').textContent = Math.round(fpsN / fpsAcc) + ' fps'; fpsAcc = 0; fpsN = 0; }
+}
+
+buildPost().then(() => renderer.setAnimationLoop(frame));
+
+Object.assign(window, { THREE, scene, camera, cam, tgtC, off, look, CH, F, goChapter, pulseAt, shockwave, burst, P });
+</script>
+</body>
+</html>
