@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+
+# archive source du modele, redondante avec les .glb (20 Mo)
+mouse.zip
+
+node_modules/

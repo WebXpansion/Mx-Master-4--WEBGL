@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MX Master 4 — Hand tracking test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+@font-face { font-family: 'Brown'; font-style: normal; font-weight: 300; font-display: block; src: url(fonts/Brown-Light.woff2) format('woff2'); }
+@font-face { font-family: 'Brown'; font-style: normal; font-weight: 500; font-display: block; src: url(fonts/Brown-Medium.woff2) format('woff2'); }
+@font-face { font-family: 'Brown'; font-style: normal; font-weight: 900; font-display: block; src: url(fonts/Brown-Black.woff2) format('woff2'); }
+:root { --accent: #01fdcf; --bg: #07080a; --fg: #eef1f5; --dim: #96a2a8; --line: rgba(255,255,255,.14); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--fg); font-family: 'Brown', system-ui, sans-serif; font-weight: 300; overflow: hidden; -webkit-font-smoothing: antialiased; }
+.mono { font-family: 'Brown', system-ui, sans-serif; font-weight: 500; }
+#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+
+/* preview camera : indispensable pour cadrer sa main */
+#cam {
+  position: fixed; right: 16px; bottom: 16px; width: 200px; border-radius: 12px; z-index: 4;
+  transform: scaleX(-1); border: 1px solid var(--line); opacity: .7; background: #000;
+}
+#cam.off { display: none; }
+
+#hud {
+  position: fixed; left: 18px; top: 16px; z-index: 5; font-size: 11px; letter-spacing: .1em;
+  display: grid; gap: 5px; pointer-events: none;
+}
+#hud b { color: var(--accent); font-weight: 500; }
+#hud .row { color: var(--dim); }
+#hud .row span { color: var(--fg); }
+
+#start {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(7,8,10,.94);
+  transition: opacity .5s; text-align: center; padding: 24px;
+}
+#start.gone { opacity: 0; pointer-events: none; }
+#start .in { display: grid; gap: 18px; justify-items: center; max-width: 420px; }
+#start h1 { font-size: clamp(26px, 4vw, 40px); font-weight: 900; letter-spacing: -.03em; line-height: 1.05; }
+#start p { color: var(--dim); font-size: 14px; line-height: 1.6; }
+#start button {
+  font: 500 15px 'Brown', sans-serif; color: #05070a; background: var(--accent); border: 0;
+  padding: 14px 26px; border-radius: 999px; cursor: pointer;
+}
+#start .err { color: #ff6b6b; font-size: 13px; min-height: 18px; }
+#prompt {
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 6;
+  font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--fg);
+  padding: 11px 20px; border: 1px solid var(--accent); border-radius: 999px;
+  background: rgba(7,8,10,.72); opacity: 0; transition: opacity .3s; white-space: nowrap; pointer-events: none;
+}
+#prompt.on { opacity: 1; }
+#tips { position: fixed; left: 18px; bottom: 16px; z-index: 5; font-size: 10.5px; letter-spacing: .12em; color: var(--dim); display: grid; gap: 4px; }
+#tips b { color: var(--fg); font-weight: 500; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+<video id="cam" autoplay playsinline muted></video>
+
+<div id="hud" class="mono">
+  <div><b id="hState">NO HAND</b></div>
+  <div class="row">PINCH <span id="hPinch">—</span></div>
+  <div class="row">INDEX <span id="hIndex">—</span></div>
+  <div class="row">RING <span id="hRing">—</span></div>
+  <div class="row">THUMB <span id="hThumb">—</span></div>
+  <div class="row" id="hFps">—</div>
+  <div class="row">MODEL <span id="hModel">loading…</span></div>
+  <div class="row">RIG <span id="hRig">—</span></div>
+  <div class="row" id="hErr" style="color:#ff6b6b;max-width:52ch;white-space:normal;line-height:1.5"></div>
+</div>
+
+<div id="prompt" class="mono"></div>
+
+<div id="tips" class="mono">
+  <div><b>OPEN HAND INTO THE CIRCLE</b> TO GRAB</div>
+  <div><b>BEND INDEX</b> LEFT CLICK &nbsp;·&nbsp; <b>BEND RING</b> RIGHT CLICK</div>
+</div>
+
+<div id="start">
+  <div class="in">
+    <h1>Hand tracking test</h1>
+    <p>Grab the MX Master 4 with your hand. Pinch thumb and middle finger to pick it up, bend your index or ring finger to click its buttons.</p>
+    <button id="go">Enable camera</button>
+    <p class="err" id="err"></p>
+    <p class="mono" style="font-size:10.5px;letter-spacing:.1em">SERVE OVER HTTP — CAMERA AND WASM DO NOT LIKE file://</p>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// mouse-optimized.glb est compresse en meshopt : sans ce decodeur, GLTFLoader refuse le fichier
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.20.0/+esm';
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const damp = (dt, l) => 1 - Math.exp(-dt * l);
+const V = () => new THREE.Vector3();
+const DEG = Math.PI / 180;
+
+/* ============================================================
+   Reglages — tout ce qui merite d'etre calibre a la main est ici.
+   Le mapping des axes de MediaPipe vers three ne se verifie qu'a
+   l'oeil : d'ou les inverseurs `mirror` et `flipUp`.
+   ============================================================ */
+const H = {
+  mirror: true,          // vue miroir : on inverse X pour que le geste suive la main
+  scale: 7,              // les world landmarks sont en metres ; la souris fait 1.3 unite pour 12.8 cm
+  dist: 6.7,             // distance camera du plan de la main : recalculee par applyCamera()
+  depthGain: 2.5,        // amplitude en profondeur (z relatif de MediaPipe, peu fiable : on en met peu)
+  smooth: 14,            // lissage du tracking
+  curlOn: 0.052, curlOff: 0.068,
+  volume: true, handRadius: 1, handOpacity: 0.5, holoDensity: 26, holoThickness: 14, holoGlow: 0.45, holoFill: 0.03, holoFresnel: 2.4,
+  jointSize: 0.9, boneGlow: 1.4, haloSize: 0.42, haloGlow: 0.55,
+
+  grabPx: 150,           // portee de saisie, en pixels ecran
+  showVideo: true, showHand: true,
+};
+const ACCENT = '#01fdcf';
+
+/* Pose de la souris QUAND ELLE EST TENUE.
+   Les axes suivis sont choisis un par un : par defaut elle glisse sur le plan,
+   comme une vraie souris — X et Z suivent la main, la hauteur et l'orientation
+   restent celles de la pose de repos.
+   `followRot` rebranche l'orientation sur la base de la main ; dans ce mode,
+   les valeurs calibrees etaient yaw -12 · pitch 98 · roll 33. */
+const GRAB = {
+  x: 0.09, y: 0, z: -0.1,
+  yaw: 0, pitch: 0, roll: 0,
+  followX: true, followY: false, followZ: true, followRot: false,
+  flipUp: true,
+};
+
+/* Pose de la souris AU REPOS, en coordonnees monde. Aucune rotation automatique. */
+const BASE = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0 };
+
+/* ============================================================
+   Scene
+   ============================================================ */
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(new THREE.Color('#07080a'), 7.5, 19);
+/* Vue de dessus : la souris est posee sur le plan, la main arrive par au-dessus.
+   `tilt` fait pivoter la camera dans le plan YZ, de la verticale (0) vers
+   l'horizontale (90). Le vecteur up doit suivre, sinon lookAt est degenere
+   quand on regarde droit vers le bas. */
+const CAM = { dist: 7.5, tilt: 0, fov: 34, handAbove: 0.9, handOnMouse: 0.45 };
+const camera = new THREE.PerspectiveCamera(CAM.fov, innerWidth / innerHeight, 0.02, 80);
+function applyCamera() {
+  const t = CAM.tilt * DEG;
+  camera.fov = CAM.fov;
+  camera.position.set(0, Math.cos(t) * CAM.dist, Math.sin(t) * CAM.dist);
+  camera.up.set(0, Math.sin(t), -Math.cos(t));   // toujours perpendiculaire a l'axe de visee
+  camera.lookAt(0, 0.15, 0);
+  camera.updateProjectionMatrix();
+  H.dist = Math.max(0.5, CAM.dist - CAM.handAbove);
+  if (ctrlHandDist) ctrlHandDist.updateDisplay();
+}
+let ctrlHandDist = null;
+applyCamera();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.35;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.3, 0.55, 0.82);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x080808, 0.25);
+const key = new THREE.SpotLight(0xffffff, 26, 0, 0.5, 0.85, 1.4);
+key.position.set(2.6, 5, 3.4); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
+const rimA = new THREE.DirectionalLight(new THREE.Color(ACCENT), 3.2); rimA.position.set(-3, 1.8, -2.6);
+const rimB = new THREE.DirectionalLight(0xffffff, 1.1); rimB.position.set(3, 1.2, -2.2);
+scene.add(hemi, key, key.target, rimA, rimB);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.55, transparent: true }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; floor.material.fog = false;
+scene.add(floor);
+
+// halo doux au sol, sous le produit
+function radialTexture(size = 256) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(c);
+}
+const pool = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({
+  map: radialTexture(), color: new THREE.Color(ACCENT), transparent: true, opacity: 0.14,
+  blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+}));
+pool.rotation.x = -Math.PI / 2; pool.position.y = 0.002; scene.add(pool);
+
+/* ============================================================
+   Modele
+   ============================================================ */
+const rig = new THREE.Group();     // pose de la souris (repos <-> tenue en main)
+scene.add(rig);
+const P = { meshes: [], parents: [], press: { L: 0, R: 0, tL: 0, tR: 0 } };
+let ready = false, modelRadius = 0.8;
+
+new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load('mouse-optimized.glb', gltf => {
+  const root = gltf.scene, meshes = [];
+  root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach(m => { m.castShadow = m.receiveShadow = true; });
+  P.meshes = meshes;
+  P.parents = meshes.map(m => m.parent);
+
+  // meme normalisation que le site : 1.3 unite de long, pose sur y = 0, centre
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(V()), ctr = box.getCenter(V());
+  const s = 1.3 / size.z;
+  const wrap = new THREE.Group();
+  wrap.scale.setScalar(s);
+  wrap.position.set(-ctr.x * s, -box.min.y * s, -ctr.z * s);
+  wrap.add(root);
+  shake.add(wrap);
+
+  // ancre du panneau haptique : mesh 6 = repose-pouce. Valeurs reprises du site,
+  // en espace local du mesh (mm), la normale pointant vers la gauche et le haut.
+  const bb = meshes[6].geometry.boundingBox || (meshes[6].geometry.computeBoundingBox(), meshes[6].geometry.boundingBox);
+  const c6 = bb.getCenter(new THREE.Vector3());
+  const anchor = new THREE.Object3D();
+  anchor.position.set(c6.x - 4, c6.y, c6.z + 2);
+  meshes[6].parent.add(anchor);
+  P.aPanel = anchor;
+  P.panelN = new THREE.Vector3(-1, 0.45, -0.1).normalize();
+  modelRadius = Math.max(size.x, size.y, size.z) * s * 0.5;
+  ready = true;
+  $('#hModel').textContent = meshes.length + ' meshes ok';
+  $('#hState').textContent = 'READY — SHOW YOUR HAND';
+}, undefined, e => {
+  const local = location.protocol === 'file:';
+  const msg = 'mouse-optimized.glb could not be loaded — '
+    + (local ? 'the page is running from file://, where the browser blocks reading local files. Serve the folder over HTTP. ' : '')
+    + (e && e.message ? e.message : e);
+  $('#hModel').textContent = 'FAILED';
+  $('#hErr').textContent = msg;
+  $('#err').textContent = msg;
+  console.error('[hand-test]', msg, e);
+  // repere de secours : si ce cube apparait, le rendu fonctionne et seul le modele manque
+  const ph = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.45, 0.9),
+    new THREE.MeshStandardMaterial({ color: 0x20242a, roughness: 0.5, metalness: 0.3, wireframe: true }));
+  ph.position.y = 0.22; rig.add(ph);
+  modelRadius = 0.8; ready = true;
+});
+
+/* ============================================================
+   Son du clic (repris du site, en plus court)
+   ============================================================ */
+let actx = null;
+const audio = () => { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; };
+const clickBank = { down: [], up: [] };
+function synthClick(hits) {
+  const a = audio(), sr = a.sampleRate, buf = a.createBuffer(1, Math.floor(sr * 0.16), sr), d = buf.getChannelData(0);
+  for (const [t0, amp, decay] of hits)
+    for (let i = Math.floor(t0 * sr); i < d.length; i++) { const t = i / sr - t0; d[i] += (Math.random() * 2 - 1) * amp * Math.exp(-t * decay) * (1 + Math.sin(t * 2 * Math.PI * 900)); }
+  return buf;
+}
+function mx4Click(phase) {
+  if (!actx) return;
+  const bank = clickBank[phase];
+  if (bank.length < 4) bank.push(synthClick(phase === 'down' ? [[0.002, 1, 190]] : [[0.002, 0.45, 260]]));
+  const a = actx, src = a.createBufferSource();
+  src.buffer = bank[Math.floor(Math.random() * bank.length)];
+  src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.12;
+  const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1800;
+  const g = a.createGain(); g.gain.value = 0.1;
+  src.connect(f).connect(g).connect(a.destination); src.start();
+}
+
+/* ============================================================
+   Main holographique — 21 articulations, 21 os.
+   Les spheres et les segments sont additifs et au-dessus du seuil
+   de bloom : c'est lui qui fabrique le halo.
+   ============================================================ */
+const BONES = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17],
+];
+// rayon relatif de chaque articulation : poignet epais, bouts de doigts fins
+const JOINT_R = [1.7, 1.0,.9,.8,.85, 1.05,.85,.75,.8, 1.05,.85,.75,.8, 1.0,.8,.7,.75, .95,.75,.68,.72];
+
+const handGroup = new THREE.Group();
+handGroup.visible = false;
+scene.add(handGroup);
+
+const jointMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(ACCENT).multiplyScalar(1.7), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+const joints = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 10), jointMat, 21);
+joints.frustumCulled = false;
+const boneMat = new THREE.LineBasicMaterial({ color: new THREE.Color(ACCENT).multiplyScalar(H.boneGlow), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+const boneGeo = new THREE.BufferGeometry();
+boneGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BONES.length * 6), 3));
+const bones = new THREE.LineSegments(boneGeo, boneMat);
+bones.frustumCulled = false;
+handGroup.add(joints, bones);
+
+
+/* ============================================================
+   Haptic Sense — porte depuis le site. Le repose-pouce est le
+   panneau haptique : quand le bout du pouce s'en approche, des
+   anneaux en partent, le modele tressaille et un thump sourd
+   accompagne le tout.
+   ============================================================ */
+const HAPT = { on: true, radiusPx: 110, repeat: 0.85, ringScale: 1, strength: 1, shake: 1, showTarget: true };
+
+// cible visible sur le panneau haptique : sans elle on ne sait pas ou amener le pouce
+const haptTarget = new THREE.Mesh(new THREE.RingGeometry(0.62, 1, 40), new THREE.MeshBasicMaterial({
+  color: new THREE.Color(ACCENT), transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide, fog: false,
+}));
+haptTarget.renderOrder = 8; scene.add(haptTarget);
+const shake = new THREE.Group();          // insere entre rig et le modele
+rig.add(shake);
+
+const ringPool = [];
+{
+  const geo = new THREE.RingGeometry(0.94, 1, 80);
+  for (let i = 0; i < 10; i++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: new THREE.Color(ACCENT), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
+    }));
+    m.visible = false; m.userData = { age: 1, life: 1, maxScale: 1, strength: 1 };
+    ringPool.push(m); scene.add(m);
+  }
+}
+const ZAX = new THREE.Vector3(0, 0, 1);
+function spawnRing(pos, normal, maxScale, life, strength) {
+  // on recycle l'anneau le plus avance dans sa vie
+  const m = ringPool.reduce((a, b) => (b.userData.age / b.userData.life > a.userData.age / a.userData.life ? b : a));
+  m.position.copy(pos);
+  m.quaternion.setFromUnitVectors(ZAX, normal);
+  m.material.color.set(ACCENT).multiplyScalar(1.8);
+  m.userData = { age: 0, life, maxScale, strength };
+  m.visible = true;
+}
+function updateRings(dt) {
+  for (const m of ringPool) {
+    const u = m.userData;
+    if (!m.visible) continue;
+    u.age += dt;
+    const k = u.age / u.life;
+    if (k >= 1) { m.visible = false; continue; }
+    m.scale.setScalar(u.maxScale * (0.12 + (1 - Math.pow(1 - k, 3)) * 0.88));
+    m.material.opacity = Math.pow(1 - k, 2) * u.strength;
+  }
+}
+function thump(s) {
+  if (!actx) return;
+  const a = actx, t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain();
+  o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.09);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.13 * s, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.14);
+}
+
+const hapt = { near: false, t: 0, amp: 0, flash: 0, dist: 9 };
+const panelP = V(), panelN = V();
+function fireHaptic(s) {
+  hapt.amp = Math.max(hapt.amp, s); hapt.flash = Math.max(hapt.flash, s);
+  spawnRing(tmpC.copy(panelP).addScaledVector(panelN, 0.05), panelN, (0.2 + s * 0.14) * HAPT.ringScale, 0.9, 0.8 * s);
+  spawnRing(tmpC.copy(panelP).addScaledVector(panelN, 0.05), panelN, (0.1 + s * 0.08) * HAPT.ringScale, 0.55, 0.6 * s);
+  thump(s);
+}
+function updateHaptic(dt) {
+  if (P.aPanel) {
+    P.aPanel.getWorldPosition(panelP);
+    panelN.copy(P.panelN).transformDirection(rig.matrixWorld);
+  }
+  if (HAPT.on && hand.present > 0.5 && P.aPanel) {
+    // distance A L'ECRAN entre le bout du pouce et le panneau : la profondeur
+    // renvoyee par MediaPipe est trop imprecise pour un test en 3D
+    hapt.dist = screenDist(pts[4], panelP);
+    const near = hapt.dist < HAPT.radiusPx * (hapt.near ? 1.3 : 1);
+    if (near && !hapt.near) { fireHaptic(HAPT.strength); hapt.t = 0; }   // entree dans la zone
+    else if (near) { hapt.t += dt; if (hapt.t > HAPT.repeat) { hapt.t = 0; fireHaptic(HAPT.strength * 0.8); } }
+    hapt.near = near;
+  } else { hapt.near = false; hapt.dist = 999; }
+
+  // la cible s'allume a mesure que le pouce s'en approche
+  if (P.aPanel) {
+    const prox = clamp(1 - hapt.dist / (HAPT.radiusPx * 3));
+    haptTarget.visible = HAPT.showTarget && ready;
+    haptTarget.position.copy(panelP);
+    haptTarget.lookAt(camera.position);
+    haptTarget.scale.setScalar(0.07 + prox * 0.03 + hapt.flash * 0.05);
+    haptTarget.material.opacity = 0.14 + prox * 0.5 + hapt.flash * 0.4;
+    haptTarget.material.color.set(ACCENT).multiplyScalar(hapt.near ? 1.8 : 1);
+  }
+
+  hapt.amp *= Math.exp(-dt * 14);
+  hapt.flash *= Math.exp(-dt * 5);
+  const a = hapt.amp * 0.012 * HAPT.shake;
+  shake.position.set((Math.random() - 0.5) * a, (Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+
+  const mat = P.meshes[6] && P.meshes[6].material;
+  if (mat && mat.emissive) { mat.emissive.set(ACCENT); mat.emissiveIntensity = hapt.flash * 0.8; }
+  updateRings(dt);
+}
+
+/* ============================================================
+   Main "volume" — la version detaillee : chaque os devient un
+   cylindre, chaque articulation une sphere, plus quelques liaisons
+   de palme. Le shader dessine des anneaux de contour le long de
+   l'axe de chaque piece, avec un liseré de Fresnel sur les bords.
+   La densite des anneaux est constante en unites monde : elle est
+   derivee de modelMatrix, donc une phalange courte et une longue
+   ont le meme pas.
+   ============================================================ */
+const PALM_LINKS = [[0, 9], [5, 13], [9, 17]];
+const ALL_BONES = BONES.concat(PALM_LINKS);
+
+const holoVert = /* glsl */`
+  varying vec2 vUv; varying vec3 vN; varying vec3 vView; varying float vLen;
+  void main() {
+    vUv = uv;
+    vLen = length(vec3(modelMatrix[1].xyz));   // longueur de la piece, en unites monde
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vN = normalize(mat3(modelMatrix) * normal);
+    vView = normalize(cameraPosition - wp.xyz);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }`;
+
+const holoFrag = /* glsl */`
+  uniform vec3 uColor; uniform float uDensity, uThickness, uFresnel, uGlow, uOpacity, uTime, uFill;
+  varying vec2 vUv; varying vec3 vN; varying vec3 vView; varying float vLen;
+  void main() {
+    float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), uFresnel);
+    // anneaux perpendiculaires a l'axe : |sin| eleve a une puissance donne des bandes fines
+    float ring = abs(sin((vUv.y * vLen * uDensity - uTime * 0.08) * 3.14159265));
+    float line = pow(ring, uThickness);
+    float a = (uFill + fres * 0.5 + line * (0.25 + 0.75 * fres)) * uOpacity;
+    if (a < 0.004) discard;
+    vec3 c = uColor * (0.35 + line * 0.9 + fres * 1.5) * uGlow;
+    gl_FragColor = vec4(c, a);
+  }`;
+
+const holoU = {
+  uColor: { value: new THREE.Color(ACCENT) },
+  uDensity: { value: 26 }, uThickness: { value: 14 }, uFresnel: { value: 2.2 },
+  uGlow: { value: 1.0 }, uOpacity: { value: 0 }, uTime: { value: 0 }, uFill: { value: 0.06 },
+};
+const holoMat = new THREE.ShaderMaterial({
+  vertexShader: holoVert, fragmentShader: holoFrag, uniforms: holoU,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+});
+
+const volGroup = new THREE.Group();
+volGroup.visible = false;
+scene.add(volGroup);
+const boneGeoV = new THREE.CylinderGeometry(0.82, 1, 1, 18, 12, true);  // legerement conique
+const jointGeoV = new THREE.SphereGeometry(1, 20, 14);
+const boneMeshes = ALL_BONES.map(([a, b], i) => {
+  const m = new THREE.Mesh(boneGeoV, holoMat);
+  m.frustumCulled = false;
+  m.userData.r = (i >= BONES.length ? 1.55 : 1) * (JOINT_R[a] + JOINT_R[b]) * 0.5;
+  volGroup.add(m); return m;
+});
+const jointMeshes = JOINT_R.map(r => {
+  const m = new THREE.Mesh(jointGeoV, holoMat);
+  m.frustumCulled = false; m.userData.r = r;
+  volGroup.add(m); return m;
+});
+
+const UPY = new THREE.Vector3(0, 1, 0);
+const bDir = V(), bMid = V();
+function layoutVolume() {
+  const R = 0.1 * H.handRadius;
+  ALL_BONES.forEach(([a, b], i) => {
+    const m = boneMeshes[i];
+    bDir.subVectors(pts[b], pts[a]);
+    const len = bDir.length() || 1e-4;
+    bMid.lerpVectors(pts[a], pts[b], 0.5);
+    m.position.copy(bMid);
+    m.quaternion.setFromUnitVectors(UPY, bDir.divideScalar(len));
+    m.scale.set(R * m.userData.r, len, R * m.userData.r);
+  });
+  for (let i = 0; i < 21; i++) {
+    const m = jointMeshes[i];
+    m.position.copy(pts[i]);
+    m.scale.setScalar(R * m.userData.r * 1.02);
+  }
+}
+
+/* Reperes de saisie : sans eux on ne sait ni quand on est a portee,
+   ni quand le pincement est pris. */
+const halo = new THREE.Mesh(new THREE.RingGeometry(0.972, 1, 96), new THREE.MeshBasicMaterial({
+  color: new THREE.Color(ACCENT), transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide, fog: false,
+}));
+halo.renderOrder = 6; scene.add(halo);
+const gripDot = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 14), new THREE.MeshBasicMaterial({
+  color: new THREE.Color(ACCENT).multiplyScalar(1.5), transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+}));
+gripDot.renderOrder = 7; scene.add(gripDot);
+
+const pts = Array.from({ length: 21 }, () => V());   // articulations en monde
+const jm = new THREE.Matrix4(), jq = new THREE.Quaternion(), js = V();
+
+/* ============================================================
+   MediaPipe
+   ============================================================ */
+const video = $('#cam');
+let landmarker = null, lastVideoTime = -1, handSeen = 0;
+
+async function initTracking() {
+  const { FilesetResolver, HandLandmarker } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
+  const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  landmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    numHands: 1,
+  });
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+  video.srcObject = stream;
+  await video.play();
+}
+
+if (location.protocol === 'file:') {
+  $('#err').textContent = 'Running from file:// — the 3D model will not load. Serve the folder over HTTP first.';
+  $('#hErr').textContent = 'Running from file:// — serve the folder over HTTP.';
+}
+
+$('#go').addEventListener('click', async () => {
+  const err = $('#err');
+  err.textContent = 'Starting…';
+  try {
+    audio();
+    await initTracking();
+    $('#start').classList.add('gone');
+    err.textContent = '';
+  } catch (e) {
+    console.error(e);
+    err.textContent = (e && e.message) || String(e);
+  }
+});
+
+/* ============================================================
+   Etat de la main -> monde
+   ============================================================ */
+const hand = {
+  present: 0, pos: V(), fwd: V(0, 0, -1), normal: V(0, 1, 0), side: V(1, 0, 0),
+  pinch: 1, indexCurl: 1, ringCurl: 1, grab: 0, grabT: 0, held: false, inRange: false,
+};
+const camFwd = V(), rayDir = V(), tmpA = V(), tmpB = V(), tmpC = V();
+const mpToThree = (l, out) => out.set(l.x * (H.mirror ? -1 : 1), -l.y, -l.z);
+
+function readHand(now) {
+  if (!landmarker || video.readyState < 2) return null;
+  if (video.currentTime === lastVideoTime) return undefined; // pas de nouvelle frame
+  lastVideoTime = video.currentTime;
+  const res = landmarker.detectForVideo(video, now);
+  return (res.landmarks && res.landmarks.length) ? res : null;
+}
+
+const wl3 = Array.from({ length: 21 }, () => V());
+function placeHand(res, dt) {
+  const lm = res.landmarks[0], wl = res.worldLandmarks[0];
+  // world landmarks -> repere three, recentres sur le poignet
+  for (let i = 0; i < 21; i++) mpToThree(wl[i], wl3[i]);
+  const w0 = tmpA.copy(wl3[0]);
+  for (let i = 0; i < 21; i++) wl3[i].sub(w0).multiplyScalar(H.scale);
+
+  // gestes, mesures en metres donc independantes de la distance a la camera
+  const d = (a, b) => Math.hypot(wl[a].x - wl[b].x, wl[a].y - wl[b].y, wl[a].z - wl[b].z);
+  hand.pinch = d(4, 12);   // conserve pour le HUD, ne pilote plus la saisie
+  hand.indexCurl = d(8, 5);
+  hand.ringCurl = d(16, 13);
+
+  // position ecran du poignet, projetee sur un plan a distance fixe de la camera
+  const mx = H.mirror ? -1 : 1;
+  const ndcX = (lm[0].x * 2 - 1) * mx;
+  const ndcY = -(lm[0].y * 2 - 1);
+  let zAvg = 0; for (let i = 0; i < 21; i++) zAvg += lm[i].z;
+  // la main descend jusqu'au dessus de la souris quand elle la tient : elle s'y pose
+  // au lieu de flotter au-dessus, et remonte a sa hauteur libre au relachement
+  const above = lerp(CAM.handAbove, CAM.handOnMouse, hand.grabT);
+  H.dist = Math.max(0.5, CAM.dist - above);
+  const D = clamp(H.dist + (zAvg / 21) * H.depthGain, 1, 20);
+  rayDir.set(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize();
+  camFwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
+  tmpB.copy(camera.position).addScaledVector(rayDir, D / rayDir.dot(camFwd));
+  hand.pos.lerp(tmpB, damp(dt, H.smooth));
+
+  // articulations : offsets locaux orientes face camera, poses sur le poignet
+  for (let i = 0; i < 21; i++) pts[i].copy(wl3[i]).applyQuaternion(camera.quaternion).add(hand.pos);
+
+  // base de la paume : avant = poignet -> phalanges, cote = index -> auriculaire
+  tmpA.copy(pts[9]).sub(pts[0]).normalize();                 // avant
+  tmpB.copy(pts[5]).sub(pts[17]).normalize();                // cote
+  tmpC.crossVectors(tmpB, tmpA).normalize();                 // normale
+  hand.fwd.copy(tmpA); hand.side.copy(tmpB); hand.normal.copy(tmpC);
+}
+
+function drawHand(dt) {
+  const op = hand.present * (H.showHand ? 1 : 0);
+  volGroup.visible = op > 0.01 && H.volume;
+  if (volGroup.visible) {
+    holoU.uTime.value += dt;
+    holoU.uOpacity.value = op * H.handOpacity;
+    holoU.uDensity.value = H.holoDensity;
+    holoU.uThickness.value = H.holoThickness;
+    holoU.uFresnel.value = H.holoFresnel;
+    holoU.uGlow.value = H.holoGlow;
+    holoU.uFill.value = H.holoFill;
+    holoU.uColor.value.set(ACCENT);
+    layoutVolume();
+  }
+  handGroup.visible = op > 0.01 && !H.volume;
+  if (!handGroup.visible) return;
+  jointMat.opacity = op; boneMat.opacity = op * 0.85;
+  boneMat.color.set(ACCENT).multiplyScalar(H.boneGlow);
+  const base = 0.028 * H.jointSize;
+  for (let i = 0; i < 21; i++) {
+    js.setScalar(base * JOINT_R[i] * (hand.held && (i === 4 || i === 12) ? 1.6 : 1));
+    jm.compose(pts[i], jq, js);
+    joints.setMatrixAt(i, jm);
+  }
+  joints.instanceMatrix.needsUpdate = true;
+  const pa = boneGeo.attributes.position;
+  BONES.forEach(([a, b], k) => {
+    pa.setXYZ(k * 2, pts[a].x, pts[a].y, pts[a].z);
+    pa.setXYZ(k * 2 + 1, pts[b].x, pts[b].y, pts[b].z);
+  });
+  pa.needsUpdate = true;
+}
+
+/* ============================================================
+   Saisie — la souris se cale dans la paume, dans le bon sens,
+   puis suit la main. Au relachement elle revient au repos.
+   ============================================================ */
+const restPos = new THREE.Vector3();
+const restQ = new THREE.Quaternion(), restE = new THREE.Euler();
+const heldPos = V(), heldQ = new THREE.Quaternion();
+const bx = V(), by = V(), bz = V(), bm = new THREE.Matrix4(), rollQ = new THREE.Quaternion(), tiltE = new THREE.Euler();
+
+/* La profondeur rendue par MediaPipe est trop imprecise pour un test de distance
+   en 3D : deux objets superposes a l'ecran peuvent etre a des metres l'un de
+   l'autre. On teste donc la proximite en PIXELS, ce qui correspond a ce que
+   l'utilisateur voit et vise. */
+const projA = V(), projB = V();
+function screenDist(a, b) {
+  projA.copy(a).project(camera); projB.copy(b).project(camera);
+  return Math.hypot((projA.x - projB.x) * innerWidth * 0.5, (projA.y - projB.y) * innerHeight * 0.5);
+}
+
+const grip = V();
+function updateGrab(dt) {
+  // Saisie par simple approche : main ouverte dans le cercle = la souris se colle.
+  // Le rayon de relachement est plus large que celui de saisie, sinon la prise
+  // clignoterait des qu'on est pile sur la limite.
+  grip.copy(pts[0]).add(pts[5]).add(pts[17]).multiplyScalar(1 / 3);   // centre de paume
+  const d = screenDist(grip, rig.position);
+  hand.inRange = hand.present > 0.5 && d < H.grabPx * (hand.held ? 1.35 : 1);
+  hand.held = hand.inRange;
+
+  hand.grabT += ((hand.held ? 1 : 0) - hand.grabT) * damp(dt, 8);
+
+  // pose tenue : la paume est au-dessus, les doigts pointent vers l'avant de la souris.
+  // Vector3.lerp ne court-circuite pas a alpha 0 (NaN * 0 = NaN), donc une base
+  // degeneree sans main suffirait a envoyer rig.position dans les NaN et a faire
+  // disparaitre le modele : on ne melange que si la cible est saine.
+  by.copy(hand.normal).multiplyScalar(GRAB.flipUp ? -1 : 1);
+  bz.copy(hand.fwd);
+  bx.crossVectors(by, bz).normalize();
+  bz.crossVectors(bx, by).normalize();
+  bm.makeBasis(bx, by, bz);
+  tiltE.set(GRAB.pitch * DEG, GRAB.yaw * DEG, GRAB.roll * DEG, 'YXZ');
+  if (GRAB.followRot) {
+    // l'orientation suit la main, corrigee dans le repere propre de la souris
+    heldQ.setFromRotationMatrix(bm);
+    heldQ.multiply(rollQ.setFromEuler(tiltE));
+  } else {
+    // orientation figee en monde : la souris glisse sans jamais basculer
+    heldQ.setFromEuler(tiltE);
+  }
+
+  // pose de repos : fixe, aucune rotation automatique
+  restPos.set(BASE.x, BASE.y, BASE.z);
+
+  // position tenue, axe par axe : un axe non suivi reste a sa valeur de repos
+  heldPos.set(
+    (GRAB.followX ? grip.x : restPos.x) + GRAB.x,
+    (GRAB.followY ? grip.y : restPos.y) + GRAB.y,
+    (GRAB.followZ ? grip.z : restPos.z) + GRAB.z,
+  );
+  restE.set(BASE.pitch * DEG, BASE.yaw * DEG, BASE.roll * DEG, 'YXZ');
+  restQ.setFromEuler(restE);
+
+  const safe = hand.grabT > 0.001 && Number.isFinite(heldPos.x) && Number.isFinite(heldPos.y) && Number.isFinite(heldPos.z)
+    && Number.isFinite(heldQ.x) && Number.isFinite(heldQ.w);
+  tmpB.copy(restPos); if (safe) tmpB.lerp(heldPos, hand.grabT);
+  tmpQ.copy(restQ); if (safe) tmpQ.slerp(heldQ, hand.grabT);
+  rig.position.lerp(tmpB, damp(dt, 10));
+  rig.quaternion.slerp(tmpQ, damp(dt, 10));
+
+  // halo autour du produit : discret a portee, plein une fois tenu
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
+  const haloT = hand.held ? 0.5 : hand.present > 0.4 ? 0.18 + 0.08 * pulse : 0.1;
+  halo.material.opacity += (haloT - halo.material.opacity) * damp(dt, 12);
+  halo.material.color.set(ACCENT).multiplyScalar(H.haloGlow);
+  halo.visible = halo.material.opacity > 0.01;
+  halo.position.copy(rig.position); halo.position.y += 0.03;   // pose au sol : lisible de dessus
+  halo.lookAt(camera.position);
+  halo.scale.setScalar(H.haloSize * (hand.held ? 1.08 : 1 + 0.04 * pulse));
+
+  // repere du centre de paume : c'est lui que le test de portee utilise
+  gripDot.visible = hand.present > 0.05;
+  gripDot.position.copy(grip);
+  gripDot.scale.setScalar(0.026);
+  gripDot.material.opacity = hand.present * (hand.held ? 0.55 : 0.25);
+
+  pool.position.set(rig.position.x, 0.002, rig.position.z);
+  pool.material.opacity = 0.14 * (1 - hand.grabT * 0.7);
+  floor.material.opacity = 0.55 * (1 - hand.grabT * 0.5);
+}
+const tmpQ = new THREE.Quaternion();
+
+/* ---- boutons : index = clic gauche, annulaire = clic droit.
+   Actifs quand la souris est tenue, ou quand le bout de l'index la touche. */
+function updateButtons(dt) {
+  const near = hand.present > 0.5 && (hand.held || pts[8].distanceTo(rig.position) < modelRadius + 0.35);
+  const p = P.press;
+  const set = (side, curl) => {
+    const on = p['t' + side] > 0.5;
+    const now = near && (on ? curl < H.curlOff : curl < H.curlOn);
+    if (now !== on) { p['t' + side] = now ? 1 : 0; mx4Click(now ? 'down' : 'up'); }
+  };
+  set('L', hand.indexCurl);
+  set('R', hand.ringCurl);
+  p.L += (p.tL - p.L) * damp(dt, 45);
+  p.R += (p.tR - p.R) * damp(dt, 45);
+  if (!P.parents.length) return;
+  P.parents.forEach((par, i) => {
+    const pr = i === 1 ? p.L : i === 4 ? p.R : 0;
+    par.position.set(0, -pr * 1.5, 0);
+  });
+}
+
+/* ============================================================
+   GUI
+   ============================================================ */
+const gui = new GUI({ title: 'Hand tracking' });
+const ghp = gui.addFolder('Haptic Sense');
+ghp.add(HAPT, 'on').name('Enabled');
+ghp.add(HAPT, 'radiusPx', 20, 400, 5).name('Thumb reach (px)');
+ghp.add(HAPT, 'showTarget').name('Show target');
+ghp.add(HAPT, 'repeat', 0.2, 3, 0.05).name('Repeat (s)');
+ghp.add(HAPT, 'ringScale', 0.2, 4, 0.05).name('Ring size');
+ghp.add(HAPT, 'strength', 0, 2, 0.05).name('Strength');
+ghp.add(HAPT, 'shake', 0, 3, 0.05).name('Shake');
+
+const gc = gui.addFolder('Camera');
+gc.add(CAM, 'dist', 3, 16, 0.1).name('Distance').onChange(applyCamera);
+gc.add(CAM, 'tilt', 0, 85, 1).name('Tilt (0 = top view)').onChange(applyCamera);
+gc.add(CAM, 'fov', 15, 70, 1).name('Field of view').onChange(applyCamera);
+gc.add(CAM, 'handAbove', 0, 3, 0.05).name('Hand height — free').onChange(applyCamera);
+gc.add(CAM, 'handOnMouse', 0, 3, 0.05).name('Hand height — holding');
+
+const gt = gui.addFolder('Tracking');
+gt.add(H, 'mirror').name('Mirror X');
+gt.add(H, 'scale', 2, 25, 0.1).name('Hand scale');
+ctrlHandDist = gt.add(H, 'dist', 1, 16, 0.05).name('Hand distance').listen();
+gt.add(H, 'depthGain', 0, 14, 0.1).name('Depth gain');
+gt.add(H, 'smooth', 2, 30, 0.5).name('Smoothing');
+function dumpSettings() {
+  const f = n => Number(n).toFixed(3).replace(/\.?0+$/, '');
+  const txt =
+`GRAB  x:${f(GRAB.x)}  y:${f(GRAB.y)}  z:${f(GRAB.z)}  yaw:${f(GRAB.yaw)}  pitch:${f(GRAB.pitch)}  roll:${f(GRAB.roll)}
+GRAB  followX:${GRAB.followX}  followY:${GRAB.followY}  followZ:${GRAB.followZ}  followRot:${GRAB.followRot}  flipUp:${GRAB.flipUp}
+BASE  x:${f(BASE.x)}  y:${f(BASE.y)}  z:${f(BASE.z)}  yaw:${f(BASE.yaw)}  pitch:${f(BASE.pitch)}  roll:${f(BASE.roll)}
+HAND  scale:${f(H.scale)}  dist:${f(H.dist)}  depthGain:${f(H.depthGain)}  grabPx:${f(H.grabPx)}`;
+  console.log(txt);
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+  const el = $('#hErr');
+  el.style.color = '#01fdcf';
+  el.textContent = 'Values copied — paste them in the chat';
+  setTimeout(() => { el.textContent = ''; el.style.color = '#ff6b6b'; }, 2600);
+}
+
+const gg = gui.addFolder('Gestures');
+gg.add(H, 'grabPx', 40, 500, 5).name('Grab reach (px)');
+gg.add(H, 'curlOn', 0.02, 0.12, 0.002).name('Click bend');
+gg.add(H, 'curlOff', 0.02, 0.14, 0.002).name('Click release');
+
+/* Pose tenue — X/Y/Z dans le repere de la main */
+const gh = gui.addFolder('Grab pose');
+gh.add(GRAB, 'followX').name('Follow hand X');
+gh.add(GRAB, 'followY').name('Follow hand Y');
+gh.add(GRAB, 'followZ').name('Follow hand Z');
+gh.add(GRAB, 'followRot').name('Follow hand rotation');
+gh.add(GRAB, 'x', -3, 3, 0.005).name('X offset');
+gh.add(GRAB, 'y', -3, 3, 0.005).name('Y offset');
+gh.add(GRAB, 'z', -3, 3, 0.005).name('Z offset');
+gh.add(GRAB, 'yaw', -180, 180, 1).name('Yaw (deg)');
+gh.add(GRAB, 'pitch', -180, 180, 1).name('Pitch (deg)');
+gh.add(GRAB, 'roll', -180, 180, 1).name('Roll (deg)');
+gh.add(GRAB, 'flipUp').name('Flip up axis');
+gh.add({ f: dumpSettings }, 'f').name('⧉ Copy values');
+
+/* Pose au repos — coordonnees monde */
+const gb = gui.addFolder('Base pose');
+gb.add(BASE, 'x', -4, 4, 0.01).name('X');
+gb.add(BASE, 'y', -2, 4, 0.01).name('Y');
+gb.add(BASE, 'z', -4, 4, 0.01).name('Z');
+gb.add(BASE, 'yaw', -180, 180, 1).name('Yaw (deg)');
+gb.add(BASE, 'pitch', -180, 180, 1).name('Pitch (deg)');
+gb.add(BASE, 'roll', -180, 180, 1).name('Roll (deg)');
+gb.add({ f: dumpSettings }, 'f').name('⧉ Copy values');
+const gv = gui.addFolder('Look');
+gv.add(H, 'showHand').name('Show hand');
+gv.add(H, 'volume').name('Volume hand');
+gv.add(H, 'handRadius', 0.3, 2.5, 0.02).name('Hand thickness');
+gv.add(H, 'handOpacity', 0.05, 1, 0.01).name('Hand opacity');
+gv.add(H, 'holoDensity', 4, 90, 1).name('Contour density');
+gv.add(H, 'holoThickness', 1, 60, 1).name('Contour sharpness');
+gv.add(H, 'holoFresnel', 0.5, 6, 0.1).name('Edge falloff');
+gv.add(H, 'holoFill', 0, 0.4, 0.005).name('Inner fill');
+gv.add(H, 'holoGlow', 0.1, 3, 0.05).name('Hologram glow');
+gv.add(H, 'jointSize', 0.3, 3, 0.05).name('Skeleton joint size');
+gv.add(H, 'boneGlow', 0.2, 4, 0.05).name('Skeleton glow');
+gv.add(H, 'haloSize', 0.15, 2, 0.01).name('Halo size');
+gv.add(H, 'haloGlow', 0, 3, 0.05).name('Halo glow');
+gv.add(H, 'showVideo').name('Camera preview').onChange(v => $('#cam').classList.toggle('off', !v));
+gv.add({ s: 0.3 }, 's', 0, 2, 0.01).name('Bloom').onChange(v => bloom.strength = v);
+
+/* ============================================================
+   Boucle
+   ============================================================ */
+let last = performance.now(), fpsAcc = 0, fpsN = 0, frameN = 0;
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+function frame() {
+  const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+  frameN++;
+
+  const res = readHand(now);
+  if (res === null) handSeen = 0;
+  else if (res) { handSeen = 1; placeHand(res, dt); }
+  hand.present += (handSeen - hand.present) * damp(dt, 10);
+
+  if (ready) { updateGrab(dt); updateButtons(dt); updateHaptic(dt); }
+  drawHand(dt);
+
+  key.target.position.copy(rig.position);
+  rimA.color.set(ACCENT);
+
+  if (frameN % 5 === 0) {
+    $('#hState').textContent = !landmarker ? 'CAMERA OFF' : handSeen ? (hand.held ? 'HOLDING' : 'TRACKING') : 'NO HAND';
+    $('#hPinch').textContent = hand.pinch.toFixed(3);
+    $('#hIndex').textContent = hand.indexCurl.toFixed(3) + (P.press.tL ? ' ▸ CLICK' : '');
+    $('#hRing').textContent = hand.ringCurl.toFixed(3) + (P.press.tR ? ' ▸ CLICK' : '');
+    $('#hThumb').textContent = (hapt.dist > 900 ? '—' : Math.round(hapt.dist) + 'px') + (hapt.near ? ' ▸ HAPTIC' : '');
+    $('#hRig').textContent = `${rig.position.x.toFixed(2)} ${rig.position.y.toFixed(2)} ${rig.position.z.toFixed(2)}`;
+    const pr = $('#prompt');
+    const txt = !landmarker ? '' : !handSeen ? 'Show your hand to the camera'
+      : hand.held ? 'Holding · bend index to click · move away to drop'
+      : 'Bring your open hand into the circle';
+    pr.textContent = txt;
+    pr.classList.toggle('on', !!txt);
+  }
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.5) { $('#hFps').textContent = Math.round(fpsN / fpsAcc) + ' FPS'; fpsAcc = 0; fpsN = 0; }
+
+  composer.render();
+}
+renderer.setAnimationLoop(frame);
+
+Object.assign(window, { THREE, scene, camera, H, hand, rig, P });
+</script>
+</body>
+</html>
