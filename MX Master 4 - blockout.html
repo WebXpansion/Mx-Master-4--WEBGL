@@ -1566,36 +1566,25 @@ function wheelAudio() {
   const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2800;
   const g = a.createGain(); g.gain.value = 0;
   src.connect(bp).connect(lp).connect(g).connect(a.destination); src.start();
-  const osc = a.createOscillator(); osc.type = 'triangle'; osc.frequency.value = 60;
-  const og = a.createGain(); og.gain.value = 0; osc.connect(og).connect(a.destination); osc.start();
   // ratchet tick: short noise burst + metallic ping
   const tl = Math.floor(a.sampleRate * 0.035), tb = a.createBuffer(1, tl, a.sampleRate), td = tb.getChannelData(0);
-  for (let i = 0; i < tl; i++) { const t = i / a.sampleRate; td[i] = (Math.random() * 2 - 1) * Math.exp(-t * 420) + Math.sin(t * 2 * Math.PI * 2600) * Math.exp(-t * 260) * 0.45; }
-  Object.assign(wsnd, { ready: true, bp, g, osc, og, tick: tb });
+  for (let i = 0; i < tl; i++) { const t = i / a.sampleRate; td[i] = (Math.random() * 2 - 1) * Math.exp(-t * 640) + Math.sin(t * 2 * Math.PI * 1150) * Math.exp(-t * 440) * 0.2; }
+  Object.assign(wsnd, { ready: true, bp, g, tick: tb });
   return true;
 }
 function detentTick() {
   const now = performance.now();
-  if (!wheelAudio() || now - lastTickT < 22) return;
+  if (!wheelAudio() || now - lastTickT < 26) return;
   lastTickT = now;
   const a = actx, src = a.createBufferSource(); src.buffer = wsnd.tick; src.playbackRate.value = 0.9 + Math.random() * 0.2;
-  const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400;
-  const g = a.createGain(); g.gain.value = 0.2 * params.wheelVolume;
-  src.connect(hp).connect(g).connect(a.destination); src.start();
+  const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 200;
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1000; lp.Q.value = 0.6;
+  const g = a.createGain(); g.gain.value = 0.3 * params.wheelVolume;   // le passe-bas retire de l'energie, on compense
+  src.connect(hp).connect(lp).connect(g).connect(a.destination); src.start();
 }
 function hyperWhoosh(big) {
   if (!wheelAudio()) return;
   const a = actx, t = a.currentTime, v = params.wheelVolume;
-  const src = a.createBufferSource(); src.buffer = a.createBuffer(1, a.sampleRate, a.sampleRate);
-  const d = src.buffer.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
-  bp.frequency.setValueAtTime(250, t); bp.frequency.exponentialRampToValueAtTime(2600, t + 0.45);
-  const g = a.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22 * v, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-  src.connect(bp).connect(g).connect(a.destination); src.start(t); src.stop(t + 0.8);
-  const o = a.createOscillator(), og = a.createGain(); o.type = 'sine';
-  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.4);
-  og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.09 * v, t + 0.08); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
-  o.connect(og).connect(a.destination); o.start(t); o.stop(t + 0.6);
   if (big) [880, 1318.5, 1760, 2637].forEach((f, i) => { // unlock chime
     const c = a.createOscillator(), cg = a.createGain(); c.type = 'sine'; c.frequency.value = f * (1 + (Math.random() - 0.5) * 0.004);
     const t0 = t + 0.18 + i * 0.07;
@@ -1669,6 +1658,8 @@ function updateWheel(dt) {
     }
     if (hyper) {
       wheelVel += dy * 0.004; wheelAngle += wheelVel * dt; wheelVel *= Math.exp(-dt * 0.5);
+      const det = Math.round(wheelAngle / DETENT);
+      if (det !== lastDetent) { detentTick(); lastDetent = det; }
       if (Math.abs(wheelVel) < 1.5) { hyper = false; wheelTarget = wheelAngle; }
     } else {
       wheelTarget += dy * 0.0027; // ≈ one detent per wheel notch
@@ -1691,11 +1682,8 @@ function updateWheel(dt) {
   const wm = P.wheel.userData.mesh.material;
   if (wm.emissive) { wm.emissive.copy(cur.rimA); wm.emissiveIntensity = hyperK * cur.wheel * 0.35; }
   if (wheelAudio()) {
-    const t = actx.currentTime, sp = clamp(Math.abs(wheelVel) / 80), on = hyper && cur.wheel > 0.3 ? 1 : 0;
-    wsnd.g.gain.setTargetAtTime(on * (0.05 + sp * 0.2) * params.wheelVolume, t, 0.08);
-    wsnd.bp.frequency.setTargetAtTime(280 + sp * 2200, t, 0.1);
-    wsnd.osc.frequency.setTargetAtTime(40 + sp * 150, t, 0.1);
-    wsnd.og.gain.setTargetAtTime(on * sp * 0.05 * params.wheelVolume, t, 0.1);
+    // pas de bruit de vitesse : seuls les crans parlent
+    wsnd.g.gain.setTargetAtTime(0, actx.currentTime, 0.08);
   }
 
   ticks.material.opacity = cur.wheel;
@@ -1739,7 +1727,7 @@ function playClick(kind) {
   const gain = loud ? 0.7 : MX4_GAIN;
   playBuffer(buf, loud, gain);
   drawWave(buf.getChannelData(0), gain, loud);
-  P.press = 1;
+  if (!loud) P.press = 1;   // seul le clic MX4 enfonce le bouton de la 3D : la souris a l'ecran est une MX Master 4
   $$('[data-click]').forEach(b => b.classList.toggle('on', b.dataset.click === kind));
 }
 
