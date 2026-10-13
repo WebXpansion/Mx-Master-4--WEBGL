@@ -360,6 +360,12 @@ body.hyper .ro-num b { color: var(--accent-ink); }
 .specs b { font-size: 14px; font-weight: 500; }
 
 /* ---------- mobile */
+body.nogui #sound,
+body.nogui #labels,
+body.nogui #dots,
+body.nogui #fps,
+body.nogui main { opacity: 0 !important; pointer-events: none !important; }
+
 @media (max-width: 800px) {
   #dots { right: 10px; }
   .topbar .dim { display: none; }
@@ -621,7 +627,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const params = {
   tilt: 1, damping: 4.5, exposure: 1, envScale: 1,
   bloomStrength: 0.5, bloomRadius: 0.55, bloomThreshold: 0.8, antialias: true,
-  hyperThreshold: 2600, wheelVolume: 0.4, dayCycles: 3, explodeManual: 0, sound: true, clickVolume: 1.4, fps: false, debugParts: false,
+  hyperThreshold: 2600, wheelVolume: 0.4, dayCycles: 3, hideUI: false, explodeManual: 0, sound: true, clickVolume: 1.4, fps: false, debugParts: false,
 };
 
 /* ============================================================
@@ -646,7 +652,7 @@ function setPageTint(t) { PAGE.tint = clamp(t); }
    Renderer / scene
    ============================================================ */
 const canvas = $('#gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // rolloff filmique des hautes lumieres sur fond sombre
@@ -2566,6 +2572,12 @@ function playFlame(one) {
 const flameDir = V(), flameFwd = V();
 function updateFlame(dt) {
   if (!flames.length) return;
+  // Les gros titres sont du texte 3D dans la scene, pas du DOM : la classe
+  // .nogui ne peut rien pour eux, il faut les eteindre ici.
+  if (params.hideUI) {
+    for (const f of flames) { f.group.visible = false; f.on = false; f.vis = 0; }
+    return;
+  }
   const cap = FLAME.bloom ? 0 : params.bloomThreshold * 0.92;
   for (const f of flames) {
     const r = f.el.getBoundingClientRect();
@@ -2734,6 +2746,8 @@ ggr.add(GRID, 'fade', 1, 20, 0.25).name('Fade radius').onChange(applyGrid);
 
 const gq = gui.addFolder('Rendu'); gq.close();
 gq.add(params, 'antialias').name('Anti-aliasing (SMAA)').onChange(v => { smaa.enabled = v; });
+gq.add(params, 'hideUI').name('WebGL only (hide UI)').onChange(v => document.body.classList.toggle('nogui', v));
+gq.add({ f: screenshot }, 'f').name('\u25a0 Capture ecran');
 
 const gb = gui.addFolder('Bloom'); gb.close();
 gb.add(params, 'bloomStrength', 0, 2, 0.01).name('Strength');
@@ -2819,6 +2833,50 @@ gt.addColor(PALE_UI, 'color').name('Pale Gray tint').onChange(v => {
 gt.add(params, 'sound').name('Sound').onChange(refreshSound);
 gt.add(params, 'clickVolume', 0, 4, 0.05).name('Click volume');
 gt.add(params, 'fps').name('FPS');
+
+/* Capture — html2canvas ne tenait pas : il reinterprete le CSS avec un parseur
+   de 2022 et casse sur color-mix(), que la feuille de style utilise partout.
+   On passe donc par la capture d'ecran native : c'est le compositeur du
+   navigateur qui fournit l'image, donc elle est exacte, effets CSS compris.
+   Chrome demande une confirmation, pre-reglee sur l'onglet courant. */
+function downloadPNG(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mx-master-4-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.png';
+  a.click();
+}
+async function screenshot() {
+  const hide = [document.querySelector('.lil-gui.root'), $('#sound')].filter(Boolean);
+  hide.forEach(e => { e.style.visibility = 'hidden'; });
+  let stream = null;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) throw new Error('capture ecran indisponible');
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      // cursor: 'never' garde le pointeur systeme hors de l'image
+      video: { displaySurface: 'browser', cursor: 'never' }, preferCurrentTab: true, audio: false,
+    });
+    const track = stream.getVideoTracks()[0];
+    try { await track.applyConstraints({ cursor: 'never' }); } catch (e) { /* contrainte refusee : sans effet */ }
+    const video = document.createElement('video');
+    video.srcObject = stream; video.muted = true; video.playsInline = true;
+    await video.play();
+    // le flux met quelques images a se stabiliser, et l'UI masquee doit avoir
+    // ete recomposee avant qu'on preleve l'image
+    await new Promise(r => setTimeout(r, 400));
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    downloadPNG(c.toDataURL('image/png'));
+  } catch (err) {
+    // refus, ou API absente : on sauve au moins la scene 3D
+    console.warn('[capture] repli sur la scene seule :', err.message || err);
+    try { composer.render(); downloadPNG(canvas.toDataURL('image/png')); }
+    catch (e2) { console.warn('[capture] echec :', e2); }
+  } finally {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    hide.forEach(e => { e.style.visibility = ''; });
+  }
+}
 
 /* ============================================================
    Frame
