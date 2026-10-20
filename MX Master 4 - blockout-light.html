@@ -585,14 +585,14 @@ body.nogui main { opacity: 0 !important; pointer-events: none !important; }
 }
 
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="vendor/gsap/gsap.min.js"></script>
+<script src="vendor/gsap/ScrollTrigger.min.js"></script>
+<script src="vendor/lenis/lenis.min.js"></script>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
-  "troika-three-text": "https://esm.sh/troika-three-text@0.52.5?external=three"
+  "three": "./vendor/three/build/three.module.js",
+  "three/addons/": "./vendor/three/examples/jsm/",
+  "troika-three-text": "./vendor/troika/troika-three-text.js"
 } }
 </script>
 </head>
@@ -884,7 +884,7 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.20.0/+esm';
+import GUI from './vendor/lil-gui/lil-gui.esm.min.js';
 
 const { gsap, ScrollTrigger, Lenis } = window;
 gsap.registerPlugin(ScrollTrigger);
@@ -1853,7 +1853,7 @@ const kbdData = document.getElementById('kbd-data');
 const kbReady = kbdData
   ? fetch('data:model/gltf-binary;base64,' + kbdData.textContent.trim()).then(r => r.arrayBuffer())
       .then(buf => { kbdData.remove();
-        const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/');
+        const draco = new DRACOLoader().setDecoderPath('vendor/three/examples/jsm/libs/draco/');
         return new GLTFLoader().setDRACOLoader(draco).parseAsync(buf, ''); })
       .then(g => { KB.gltf = g; }).catch(e => console.warn('[clavier] chargement impossible :', e))
   : Promise.resolve();
@@ -3225,7 +3225,7 @@ function buildSurfaces() {
   const tag = document.getElementById('surf-pad');
   if (tag) {
     const bin = Uint8Array.from(atob(tag.textContent.trim()), ch => ch.charCodeAt(0));
-    const ld = new GLTFLoader(); const dl = new DRACOLoader(); dl.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/'); ld.setDRACOLoader(dl);
+    const ld = new GLTFLoader(); const dl = new DRACOLoader(); dl.setDecoderPath('vendor/three/examples/jsm/libs/draco/'); ld.setDRACOLoader(dl);
     ld.parse(bin.buffer, '', g => {
       const m = g.scene, bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()), ct = bb.getCenter(new THREE.Vector3());
       m.position.set(-ct.x, -bb.min.y, -ct.z);   // pose au sol, centre
@@ -3712,7 +3712,7 @@ function loadDeviceModel(dev, key, i) {
   const el = document.getElementById('dev-' + key); if (!el) return;
   fetch('data:model/gltf-binary;base64,' + el.textContent.trim()).then(r => r.arrayBuffer()).then(buf => {
     el.remove();
-    const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/draco/');
+    const draco = new DRACOLoader().setDecoderPath('vendor/three/examples/jsm/libs/draco/');
     return new GLTFLoader().setDRACOLoader(draco).parseAsync(buf, '');
   }).then(g => {
     const root = g.scene;
