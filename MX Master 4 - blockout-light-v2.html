@@ -5512,7 +5512,8 @@ addEventListener('click', e => {
    V2 — defilement « slider » : un geste de scroll = la scene suivante (ou precedente).
    Arrets : chaque scene a l'endroit ou le menu l'amene (35 %), et 8K DPI s'arrete sur chaque surface.
    ============================================================ */
-const SNAP = { on: true, duration: 1.4, quiet: 160, frac: 0.35,
+const SNAP = { on: false,   // V2 : slider coupe pour le moment (true pour le remettre)
+  duration: 1.4, quiet: 160, frac: 0.35,
   stops: { dpi: [0.3, 0.59, 0.86] } };   // fractions de la scene ou s'arreter (une par surface sur 8K DPI)
 const snap = { busy: false, armed: true, last: 0, timer: 0, ty: null };
 function snapStops() {
