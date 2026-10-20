@@ -1365,7 +1365,13 @@ scene.add(rig); rig.add(turn); turn.add(tilt); tilt.add(shake); shake.add(modelW
 /* ============================================================
    Scroll (Lenis + ScrollTrigger)
    ============================================================ */
+// au rechargement : toujours repartir du haut (ecran de choix produit), le navigateur ne restaure pas la position
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+window.scrollTo(0, 0);
+addEventListener('beforeunload', () => window.scrollTo(0, 0));
 const lenis = new Lenis({ lerp: 0.085, smoothWheel: true });
+lenis.scrollTo(0, { immediate: true });
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.lagSmoothing(0);
 
@@ -1898,7 +1904,8 @@ const kbReady = kbdData
       .then(g => { KB.gltf = g; }).catch(e => console.warn('[clavier] chargement impossible :', e))
   : Promise.resolve();
 
-const onModel = gltf => { Promise.all([document.fonts.ready, document.fonts.load('96px "Material Symbols Rounded"', 'colorize'), document.fonts.load('900 96px Brown'), document.fonts.load('500 40px Brown')]).then(() => init(gltf)); };
+const onModel = gltf => { gltf.scene.traverse(o => { if (o.isMesh && /^Node(5|11)$/.test(o.name)) o.visible = false; });   // V2 : coques transparentes du GLB (effet « verre » decale autour de la souris)
+  Promise.all([document.fonts.ready, document.fonts.load('96px "Material Symbols Rounded"', 'colorize'), document.fonts.load('900 96px Brown'), document.fonts.load('500 40px Brown')]).then(() => init(gltf)); };
 const onModelError = err => { $('#ldPct').textContent = 'ERROR: ' + (err.message || err); };
 const embeddedModel = document.getElementById('glb-data'); // single-file build: the GLB is inlined as base64
 if (embeddedModel) {
