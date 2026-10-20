@@ -2709,6 +2709,16 @@ function labelTexture(text, w = 320, h = 88) { // dark pill with the action name
 }
 const uiMat = map => new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false });
 
+/* Actions Ring dessine par-dessus l'image finale (apres ACES / OutputPass / SMAA) : le vert #02FDCF sort exact,
+   et les fondus d'opacite se melangent comme en CSS (avant, la compensation HDR verdissait les pastilles semi-transparentes) */
+const RING_LAYER = 7;
+function renderRingOverlay() {
+  if (!ringUI || !ringUI.visible) return;
+  const bg = scene.background, fog = scene.fog, ac = renderer.autoClear, tm = renderer.toneMapping, su = renderer.shadowMap.autoUpdate, cl = camera.layers.mask;
+  scene.background = null; scene.fog = null; renderer.autoClear = false; renderer.toneMapping = THREE.NoToneMapping; renderer.shadowMap.autoUpdate = false;
+  camera.layers.set(RING_LAYER); renderer.setRenderTarget(null); renderer.render(scene, camera);
+  camera.layers.mask = cl; scene.background = bg; scene.fog = fog; renderer.autoClear = ac; renderer.toneMapping = tm; renderer.shadowMap.autoUpdate = su;
+}
 function buildRing() {
   const N = ACTIONS.length;
   ACTIONS.forEach((a, i) => {
@@ -2735,6 +2745,7 @@ function buildRing() {
   ringUI.add(hub, cursor); ringUI.userData = { hub, cursor };
   ringUI.visible = false;
   scene.add(ringUI);
+  ringUI.traverse(o => o.layers.set(RING_LAYER));   // dessine apres le tone mapping : couleurs exactes, fondus propres
   // light beam from the thumb button to the ring
   ringBeam = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(), V()]),
     new THREE.LineBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
@@ -2821,7 +2832,7 @@ function updateRing(dt) {
   ringBeam.material.color.copy(cur.rimA).multiplyScalar(2); ringBeam.material.opacity = 0.5 * f;
   const { hub, cursor } = ringUI.userData;
   hub.material.opacity = f; cursor.material.opacity = f;
-  updRingBtnCol(); hub.material.color.copy(ringBtnCol);
+  hub.material.color.set(RING_UI.bubble);
   hub.scale.setScalar(easeOutBack(clamp(f * 2)));
   // hovered button from pointer angle around the projected ring centre
   ringCenter.copy(ringUI.position).project(camera);
@@ -2859,9 +2870,9 @@ function updateRing(dt) {
     const s = (0.25 + 0.75 * clamp(out)) * (1 + 0.12 * clamp(h));
     g.scale.set(s * flipX, s, s);
     u.disc.material.opacity = f;
-    u.disc.material.color.copy(ringBtnCol).multiplyScalar(RING_UI.rest * (1 + 0.08 * clamp(h)));   // #02FDCF exact au repos, legerement plus vif au survol
+    u.disc.material.color.set(RING_UI.bubble).multiplyScalar(RING_UI.rest);   // #02FDCF exact (dessine hors tone mapping)
     u.halo.material.opacity = RING_UI.shadow * f;
-    u.ring.material.color.copy(RING_UI.useAccentHover ? cur.rimA : ringHoverCol).multiplyScalar(1.3);
+    u.ring.material.color.copy(RING_UI.useAccentHover ? cur.rimA : ringHoverCol);
     u.ring.material.opacity = clamp(h) * f;
     u.lbl.material.opacity = clamp(h) * f;
   });
@@ -3198,7 +3209,7 @@ const SURF = {
   slabW: 7.5, slabD: 11.35, slabEdge: '#000000', slabEdgeI: 1,   // dalle de verre : ses tranches epaisses (vertes) disent « verre »   // vitre surelevee : ombre sur le carrelage dessous + reflet de la souris + reflets de lumiere
   padW: 12, padD: 8, padThick: 0.012, padColor: '#2b2d31', padScale: 1, padRot: 0,
   // reglages image par matiere (luminosite, contraste, saturation, teinte)
-  woodBri: 0.6, woodCon: 1.08, woodSat: 1, woodTint: '#ffffff', woodNormal: 0.8,   // texture Poly Haven : reglages neutres (les anciens visaient le bois procedural)
+  woodBri: 0.36, woodSpec: 0.15, woodCon: 1.08, woodSat: 1, woodTint: '#ffffff', woodNormal: 0.8,   // texture Poly Haven : reglages neutres (les anciens visaient le bois procedural)
   padBri: 0.5, padCon: 1.01, padSat: 2, padTint: '#ffffff', padRough: 1,
   label: true, follow: 0.75, trailWood: '#8a5e3a', trailPad: '#141518',   // les surfaces suivent (en partie) la souris pour rester dessous
 };
@@ -3253,11 +3264,11 @@ function roundedRect(w, d, r) {
   sh.lineTo(x, y + r); sh.quadraticCurveTo(x, y, x + r, y); return sh;
 }
 function gradeMat(m, key) {
-  const u = { uBri: { value: 1 }, uCon: { value: 1 }, uSat: { value: 1 }, uTintG: { value: new THREE.Color('#ffffff') } };
+  const u = { uBri: { value: 1 }, uCon: { value: 1 }, uSat: { value: 1 }, uSpecK: { value: 1 }, uTintG: { value: new THREE.Color('#ffffff') } };
   m.userData.grade = u; m.userData.gradeKey = key;
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
-    sh.fragmentShader = 'uniform float uBri, uCon, uSat; uniform vec3 uTintG;\n' + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+    sh.fragmentShader = 'uniform float uBri, uCon, uSat, uSpecK; uniform vec3 uTintG;\n' + sh.fragmentShader.replace('#include <lights_fragment_maps>', '#include <lights_fragment_maps>\n radiance *= uSpecK;   // reflets d\'environnement (le halo clair au loin)').replace('#include <map_fragment>', `#include <map_fragment>
       { vec3 c = diffuseColor.rgb;
         c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, uSat);
         c = (c - 0.18) * uCon + 0.18;
@@ -3267,7 +3278,7 @@ function gradeMat(m, key) {
 }
 function syncGrade(m) {
   const g = m && m.userData.grade; if (!g) return; const k = m.userData.gradeKey;
-  g.uBri.value = SURF[k + 'Bri']; g.uCon.value = SURF[k + 'Con']; g.uSat.value = SURF[k + 'Sat']; g.uTintG.value.set(SURF[k + 'Tint']);
+  g.uBri.value = SURF[k + 'Bri']; g.uSpecK.value = SURF[k + 'Spec'] ?? 1; g.uCon.value = SURF[k + 'Con']; g.uSat.value = SURF[k + 'Sat']; g.uTintG.value.set(SURF[k + 'Tint']);
 }
 function buildSurfaces() {
   // bois : grand plateau a bords fondus dans le carrelage
@@ -3360,6 +3371,7 @@ function updateSurfaces(dt) {
   surf.wood.scale.set(SURF.woodSize, SURF.woodSize, 1);
   surf.woodMaps.forEach(t => t.repeat.set(SURF.woodSize / SURF.woodPlank, SURF.woodSize / SURF.woodPlank));
   surf.wood.material.normalScale.set(SURF.woodNormal, SURF.woodNormal);
+  if (surf.wood.material.userData.gloss !== SURF.woodSpec) { surf.wood.material.userData.gloss = SURF.woodSpec; surf.wood.material.roughnessMap = SURF.woodSpec >= 0.99 ? surf.woodMaps[2] || null : null; surf.wood.material.roughness = 1; surf.wood.material.needsUpdate = true; }
   surf.wood.position.set(0, 0.0015, 0);   // tout le sol : pas besoin de suivre la souris
   // verre
   const g = surf.glass, gu = g.userData;
@@ -5967,6 +5979,7 @@ gcab.add({ go: () => go('devices', 0.75) }, 'go').name('▶ Aller a l\'etape');
   gt.add(SURF, 'fade', 0.005, 0.2, 0.005).name('Duree des fondus');
   const gw = gsf.addFolder('Bois');
   gw.add(SURF, 'woodBri', 0.1, 2, 0.01).name('Luminosite');
+  gw.add(SURF, 'woodSpec', 0, 1, 0.01).name('Reflets / brillance');
   gw.add(SURF, 'woodCon', 0.3, 2.5, 0.01).name('Contraste');
   gw.add(SURF, 'woodSat', 0, 2, 0.01).name('Saturation');
   gw.addColor(SURF, 'woodTint').name('Teinte');
@@ -6446,6 +6459,7 @@ function frame() {
 
   bloom.strength = params.bloomStrength + hyperK * cur.wheel * 0.2 + unlockKick * 0.8; bloom.radius = params.bloomRadius; bloom.threshold = Math.max(params.bloomThreshold, Math.max(bgHDR.r, bgHDR.g, bgHDR.b) * 1.08);
   composer.render();
+  renderRingOverlay();
   // V2 : « 70 days » lit la luminosite reelle de l'image derriere son texte -> texte blanc si la scene est sombre
   if (day.f > 0.02 && frameN % 6 === 0) {
     const el = daysSec || (daysSec = document.querySelector('section[data-shot="days"]'));
