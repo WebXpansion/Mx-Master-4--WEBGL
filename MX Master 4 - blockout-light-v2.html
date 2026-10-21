@@ -265,10 +265,57 @@ html.pick-cursor, html.pick-cursor canvas { cursor: none !important; }
 }
 #changeProduct:hover { border-color: var(--accent); }
 html.picked #changeProduct { opacity: 1; pointer-events: auto; transform: none; }
+/* V2 : en scrollant, le titre passe en haut en petit dans une barre blanche (retour a gauche, panier a droite) */
+#prodBar { position: fixed; left: 0; right: 0; top: var(--hdr); z-index: 7; height: 68px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.05);
+  opacity: 0; transform: translateY(-100%); pointer-events: none; transition: opacity .4s, transform .5s cubic-bezier(.2, .8, .2, 1); }
+#prodBar .pb-title { font: 700 19px/1 'Brown', system-ui, sans-serif; letter-spacing: -.01em; color: var(--fg); transform: translateY(18px) scale(1.6); opacity: 0;
+  transition: transform .6s cubic-bezier(.2, .8, .2, 1), opacity .4s; }
+.pb-prods { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 8px; }
+.pb-prod { width: 42px; height: 42px; padding: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.08); background: #f2f2f3; cursor: pointer;
+  display: grid; place-items: center; overflow: hidden; opacity: .38; filter: grayscale(.4); transition: opacity .25s, filter .25s, box-shadow .25s, transform .25s; }
+.pb-prod img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.pb-prod:hover { opacity: .7; }
+.pb-prod.on { width: 48px; height: 48px; opacity: 1; filter: none; background: #fff; box-shadow: 0 0 0 2px #02fdcf, 0 6px 16px rgba(0,0,0,.08); }
+#magRing { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; display: none; }
+#magRing .mr-ticks i { position: absolute; left: -1.5px; top: -8px; width: 3px; height: 16px; border-radius: 2px; background: #ffffff; box-shadow: 0 0 0 1px rgba(0,0,0,.18); transform-origin: 1.5px 8px; }
+#magRing .mr-lbl { position: absolute; left: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; color: #111; font-family: 'Brown', system-ui, sans-serif; background: #fff; padding: 10px 18px 9px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+#magRing .mr-lbl b { font-weight: 700; font-size: 34px; letter-spacing: -.02em; }
+#magRing .mr-lbl span { margin-left: 6px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #666; }
+#magRing .mr-lbl em { display: block; margin-top: 4px; font-style: normal; font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: #777; }
+#magRing .mr-lbl em.on { color: #00a383; }
+#prodBar .pb-cart { position: absolute; right: 30px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 2px;
+  padding: 14px 26px; border: 0; border-radius: 999px; background: #02fdcf; color: #000; cursor: pointer;
+  font: 600 12px/1 'Brown', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; transition: filter .2s; }
+#prodBar .pb-cart:hover { filter: brightness(.95); }
+#prodBar .pb-cart span { opacity: .55; margin: 0 4px; }
+html.prodbar #prodBar { opacity: 1; transform: none; pointer-events: auto; }
+html.prodbar #prodBar .pb-title { transform: none; opacity: 1; transition-delay: .08s; }
+html.prodbar #changeProduct { top: calc(var(--hdr) + 16px); background: transparent; }
+#changeProduct { display: none !important; }   /* V2 : bouton retire (le retour se fait en scrollant vers le haut tout en haut) */
+html.in-setup #prodBar { opacity: 0 !important; pointer-events: none !important; }
+@media (max-width: 700px) { #prodBar .pb-title { display: none; } #prodBar .pb-cart { right: 14px; padding: 10px 14px; font-size: 12px; } }
 /* tant qu'on n'a pas choisi, la navigation des chapitres n'a pas de sens : masquee */
 #dots { transition: opacity .4s; }
+/* V2 : regle de chapitres (remplace la liste a droite) — graduations qui grossissent sous le pointeur, pastille verte */
+#dots { display: none !important; }
+#ruler { position: fixed; right: 26px; top: 50%; transform: translateY(-50%); z-index: 6; width: 30px; height: min(38vh, 300px);
+  background: #ffffff; border-radius: 9px; box-shadow: 0 10px 28px rgba(0,0,0,.10), inset 0 0 0 1px rgba(0,0,0,.06);
+  overflow: hidden; cursor: pointer; transition: opacity .4s; touch-action: none; }
+#ruler .rl-glow { position: absolute; left: 0; right: 0; height: 90px; margin-top: -45px; pointer-events: none; opacity: 0;
+  background: radial-gradient(closest-side, rgba(2,253,207,.38), rgba(2,253,207,0)); transition: opacity .3s; }
+#ruler .rl-t { position: absolute; left: 50%; width: 8px; height: 1.5px; margin: -.75px 0 0 -4px; border-radius: 2px; background: #111; opacity: .28; will-change: transform, opacity; }
+#ruler .rl-t.maj { width: 12px; margin-left: -6px; opacity: .45; }
+#ruler .rl-t.ch { background: #00c9a4; opacity: 1; }
+#ruler .rl-cur { position: absolute; left: 50%; width: 18px; height: 2.5px; margin: -1.25px 0 0 -9px; border-radius: 2px; background: #02fdcf; box-shadow: 0 0 10px rgba(2,253,207,.7); pointer-events: none; }
+#rulerPill { position: fixed; z-index: 7; top: 0; right: 0; pointer-events: none; padding: 7px 13px 6px; border-radius: 999px;
+  background: #02fdcf; color: #000; font: 600 10.5px/1 'Brown', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(2,253,207,.35); opacity: 0; transform: translate(0, -50%) scale(.92); transition: opacity .22s, transform .22s; }
+#rulerPill.on { opacity: 1; transform: translate(0, -50%) scale(1); }
+html:not(.picked) #ruler, html.in-setup #ruler, html:not(.picked) #rulerPill, html.in-setup #rulerPill { opacity: 0 !important; pointer-events: none; }
+@media (max-width: 800px) { #ruler { right: 10px; width: 26px; } }
 html:not(.picked) #dots, html.in-setup #dots { opacity: 0; pointer-events: none; }   /* ni avant le choix, ni sur le bureau final */
-body.nogui #changeProduct { display: none; }
+body.nogui #changeProduct, body.nogui #prodBar { display: none; }
 
 /* profils de fin + retour du bureau */
 .persona { display: flex; gap: 10px; pointer-events: auto; }
@@ -307,6 +354,12 @@ html.setup-done #setupBack { opacity: 1; pointer-events: auto; transform: transl
 #heroTitle .ht-a, #heroTitle .ht-b { display: inline-block; white-space: nowrap; }
 #heroTitle .ht-b { margin-left: 1.25em; }
 html.intro-t #heroTitle { opacity: 0; }
+/* V2 : prix sous « MX Master 4 », une fois la souris choisie */
+#heroPrice { margin: 10px 0 0; font: 500 16px/1 'Brown', system-ui, sans-serif; letter-spacing: .03em; color: #3a3b3e; opacity: 0; transform: translateY(6px); transition: opacity .5s, transform .5s; pointer-events: none; }
+html.picked #heroPrice { opacity: 1; transform: none; transition-delay: .15s; }
+html.prodbar #heroPrice { opacity: 0; transform: translateY(-6px); transition-delay: 0s; }
+#heroTitle { transition: opacity .35s, transform .45s cubic-bezier(.2, .8, .2, 1); }
+html.prodbar #heroTitle { opacity: 0 !important; transform: translateY(-24px) scale(.7); pointer-events: none; }   /* V2 : le titre part dans la barre du haut */
 .ld-inner { display: flex; flex-direction: column; gap: 14px; align-items: center; font-size: 11px; letter-spacing: .2em; color: var(--dim); }
 .ld-bar { width: 220px; height: 2px; background: var(--line); overflow: hidden; }
 .ld-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
@@ -596,6 +649,8 @@ section[data-shot="days"] .days b, section[data-shot="days"] .days span, section
 body.nogui #sound,
 body.nogui #labels,
 body.nogui #dots,
+body.nogui #ruler,
+body.nogui #rulerPill,
 body.nogui #fps,
 body.nogui main { opacity: 0 !important; pointer-events: none !important; }
 
@@ -715,6 +770,7 @@ body.nogui main { opacity: 0 !important; pointer-events: none !important; }
 <div id="pickCursor"><i class="pc-ring"></i><i class="pc-dot"></i><span class="pc-label">Choose a product</span></div>
 
 <button id="changeProduct" type="button" class="mono">← Back to MX Series</button>
+<div id="prodBar" aria-hidden="true"><div class="pb-prods"><button type="button" class="pb-prod on" data-p="mouse" title="MX Master 4"><img alt="MX Master 4" src="data:image/webp;base64,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"></button><button type="button" class="pb-prod" data-p="keys" title="MX Keys 2"><img alt="MX Keys 2" src="data:image/webp;base64,UklGRo4FAABXRUJQVlA4WAoAAAAQAAAAfwAAfwAAQUxQSIkAAAABcFpr29N8FMlKwbEKw+CTIRKNTe9jxPXuvvLq75wPSyJiAujv/76BSUZ1O53OQp6edtO2pixxSXJqEHxDeeJBVEFFozZVUVTkWkyghtBNMS48RhCELxh6XETjUzl7PGDxGR59Zu6d97AuMJcjGLDIDGAcPMofOvA38KByeX9/Qn/flyX9/d83EgBWUDgg3gQAANAXAJ0BKoAAgAA+MRiKQ6IhoRIMBTQgAwS0ojuQ24Ud0alr3hdaZkC73ZZf752QWWeID6+87/9k/WbyKfqf+S/Xj4AP0N6rn9v43/rT2B+mIRYlykMz4dy8SKT+ruMFV9AH1VNLPdHaaWNQnC4i6DQtdifJYuENGHEALtRNjKUioX/o9bQT3Fx15ZZqvhEuAnOFvUijr0upmDFygnyh9+1iB75qvrD/ZtEjSg8FjnYcCYl6CpaTBRAwMDAwL+yKT+rvhUQgBQAA/v7QHAAABf/zgb9BysdnDVomL/i5XpQr83cfOkq9DNJ3x3T0WbeAOfVAS2NEOlNx3D5qegax/NmdswboqjVKFWjcVRoUr/GCC4YyG9rYeMoV+JmMbXH3ZkMw/6FelQIqzabUGFpvBDxUJysKGzyvPEUPYSbMDuZ9LZVR5x3cPaRW4oT3Q56/mQ0tD+PFzFVnbixMXBg4AyP3iq4JUdqXj3qYhsZFLO2h5uS4QMVaOYfVmybzvcnrc6ePOfbHfjmd4VQPd3vWaZJrS2Kw+UqIY1M33DAN56NCNGKfpctz2nnElVWAyvLwP698Zy7X8PR8dkhee3/mHt4xUAE5bpUEKGsm1XT2dDZGHKs3BieVaYI+LsTbit+EDnsP/kXm84AblPkq5tA9tHH5YHRcefiiCifpTi73BLHza7F3hK2Wv7qLruVWEY/kWQ4Uk9buP7CS5VzVU4KdZ25WwAFYpaJ6bFgCaR2yq9rh8CN9pcfGd85M7nFzh1yR2ehjTilA8m9r5nys5OfH4Qv9u08necfmW+NmgjyPBz1/pLguTMCG9jA5Lkqf6YhuRXGA9eK2caVD7jZdCJdnlASx6/ZFWOJu33iOTqNbLSI10dBKIFN0ZuMuFIfyNM4MEBjG5Wa/lYqSVd6qnbYxAnSUDj8EOHnsHh4GGuPZuhp2R6VnjeUiNMVZeD4fPsKJS0ALMH3IiEjQfXTJZV64GQErM5OWXdpE+wJhaXCUVqxU/0qXzNlgonIybIO3cB25/gi2/trzSB2P3PXR/h1az++0l100Db0grbDqMzWdQPcLGGKqYHMzv3n4FS2HhbRcU8kycDXR/dUPeWl7mFMAjYSkyuOdup5/w2hfdFdplcLmqqImy6njGg7tSpmfh+vDZ1iobVQ3+qwlT5HLzO6l5SaeS4qzQ9yA0jmqGz2ZzqhNZjsE70Bit1fjnA94PsRuwDnovdU2ERR3jqclulxXkjGeKk++A8BEx0ta9/ysQzWAQ6jPa9XQQjZsyNDXoED5ZWE3muY/dNYpEwzGWce8/joElFn4BANy+XABq+vBrgSMWl421vcOwFSsxjxbo9Wg94a5pn3smqIK2MhOZlOxHlwqXqUef91f8HOtgqO44+yM3tXNObJ9QbFwkJbg/j98Wi/obAmfktjxmUQlfLAwEpXvhquEpjGJbovbrnhNBhGZJpu2cgM5uScQDJ/yVb8RztALO9sv9HMLH+FTEGBCmPE295EqhZO/iy5VQs6Nx+paafCMKM136+CSsfebZGlr22hRZ7WcHhEHxG0Aae+Vz9P1MW8/PjQ/1DKl+gii6nH+9bk4O3b/fTtxQBHlk4vXX8PMLotQAwg2A8HpM0a811o7pF5zQky+4hca28Cb3HNu0Z4fiOx9LMwAAAAAAAA="></button></div><b class="pb-title">MX Master 4</b><button type="button" class="pb-cart">Add to cart<span>・</span>$119.99</button></div>
 <button id="setupBack" type="button">← Back</button>
 <div id="title">
   <span class="k" id="tKicker"></span>
@@ -732,6 +788,7 @@ body.nogui main { opacity: 0 !important; pointer-events: none !important; }
       <div class="panel">
         <div class="head-block">
           <h1 id="heroTitle" class="flame-text"><span class="ht-a">Discover the</span> <b class="ht-b">MX Master Series</b></h1>
+          <p id="heroPrice">$119.99</p>
         </div>
         <p class="hero-scroll mono reveal" id="heroHint"></p>
       </div>
@@ -1107,7 +1164,7 @@ const comboFloor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.Shade
         col = mix(col, uMCol, line * m * uMK);
       }
       float s = exp(-dot(vW.xz - uSheenPos, vW.xz - uSheenPos) / (uSheenSize * uSheenSize));
-      col += s * uSheen * (1.0 - line * 0.8);
+      col += s * uSheen * (1.0 - line * 0.8 * step(0.002, distance(uLine, uFloor)));   // V2 : lignes de la couleur du sol -> le reflet ne les fait plus ressortir
       col += (hash(floor(vW.xz * 180.0)) - 0.5) * uRough;
       float f = smoothstep(uNear, uFar, dist);
       col = mix(col, uFog, f);
@@ -1390,7 +1447,7 @@ const raycaster = new THREE.Raycaster();
 // Les panneaux et les cartes sont des zones d'interface : un clic dedans reste dedans
 // et ne doit jamais atteindre la scene 3D (ni presser les boutons de la souris,
 // ni lancer le drag de rotation de l'outro).
-const isUI = t => t.closest && t.closest('button, input, a, label, .lil-gui, #dots, .card canvas, .panel, .card');
+const isUI = t => t.closest && t.closest('button, input, a, label, .lil-gui, #dots, #ruler, #prodBar, .card canvas, .panel, .card');
 
 /* ============================================================
    Audio (tiny synth for haptic thumps and click comparison)
@@ -3061,6 +3118,7 @@ function updateWheel(dt) {
     $('#wBar').style.width = lps / 10 + '%';
   }
   updateWheelUI(hyper, lps);
+  updateMagUI(dt, hyper, lps);
   document.body.classList.toggle('hyper', hyperK > 0.3);
 }
 /* Widget 3D au-dessus de la molette : mode (Ratchet / Hyper-fast), lignes par seconde, jauge.
@@ -3092,7 +3150,7 @@ function drawWheelUI(mode, n, pct, hyper) {
 }
 function updateWheelUI(hyper, lps) {
   if (!wui) { if (!F.wheel) return; buildWheelUI(); }
-  const k = WUI.on ? clamp((cur.wheel - 0.25) / 0.6) : 0;
+  const k = WUI.on && MAGUI.mode === 'Carte' ? clamp((cur.wheel - 0.25) / 0.6) : 0;
   if (!wui.mesh.parent) scene.add(wui.mesh);   // retire de la scene par un nettoyage ailleurs : on le remet
   wui.mesh.visible = k > 0.01; if (!wui.mesh.visible) return;
   wui.mesh.material.opacity = smooth(k);
@@ -3110,6 +3168,194 @@ function updateWheelUI(hyper, lps) {
 }
 const _wuiP = new THREE.Vector3(), _wuiQ = new THREE.Vector3();
 
+/* ============================================================
+   V2 — MagSpeed : 4 UI immersives au choix (helper « MagSpeed — widget 3D lignes/s » › UI)
+   Carte (l'ancienne) · Code (page qui defile) · Odometre (compteur geant) · Tunnel (lignes qui filent) · Anneau (crans autour de la molette)
+   Toutes lisent la meme molette : wheelAngle (crans), lps (lignes/s), hyper.
+   ============================================================ */
+const MAGUI = { mode: 'Code', x: 0, y: 0, z: 0, scale: 1, rotY: 0, linesPerDetent: 3 };
+const MAGUI_MODES = ['Carte', 'Code', 'Odometre', 'Tunnel', 'Anneau'];
+const mag = { built: false, off: 0, total: 0, lastA: null, stopK: 0, blur: 0, ring: [], ringV: null };
+const C_ACC = new THREE.Color('#00c9a4'), C_DARK = new THREE.Color('#1c1d20'), _mgC2 = new THREE.Color();
+const _mgP = new THREE.Vector3(), _mgT = new THREE.Vector3(), _mgM = new THREE.Matrix4(), _mgS = new THREE.Vector3(), _mgQ = new THREE.Quaternion(), _mgC = new THREE.Color();
+const CODE_LINES = [
+  'import { Scroll } from "@logi/magspeed";', '', 'const wheel = new Scroll({', '  mode: "ratchet",', '  detents: 24,', '  haptics: true,', '});', '',
+  'wheel.on("spin", (speed) => {', '  if (speed > THRESHOLD) {', '    wheel.mode = "hyper-fast";', '    page.scrollBy(speed * 1000);', '  }', '});', '',
+  '// 1,000 lines per second', 'function arrive(target) {', '  const line = page.find(target);', '  wheel.stopAt(line, { precise: true });', '  return line.highlight();', '}', '',
+  'export const report = {', '  title: "Q4 roadmap",', '  sections: 48,', '  rows: 12_400,', '  owner: "design-team",', '};', '',
+  'for (const row of report.rows) {', '  if (row.flagged) review(row);', '  else archive(row);', '}', '',
+  'async function sync() {', '  await cloud.push(report);', '  notify("Saved");', '}', '', 'sync();', '',
+];
+function magTex(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return { c, x: c.getContext('2d'), t }; }
+function magPlane(tx, w, h) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tx.t, transparent: true, depthWrite: false, toneMapped: false, opacity: 0, side: THREE.DoubleSide, fog: false }));
+  m.renderOrder = 3; m.frustumCulled = false; m.visible = false; scene.add(m); return m;
+}
+function buildMag() {
+  mag.code = magTex(900, 1200); mag.codeM = magPlane(mag.code, 0.75, 1.0);
+  mag.odo = magTex(1700, 560); mag.odoM = magPlane(mag.odo, 1.7, 0.56);
+  // tunnel : des lignes de texte (barres) qui filent du fond vers la souris
+  const N = 460;
+  mag.tun = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, toneMapped: false, fog: false }), N);
+  mag.tun.frustumCulled = false; mag.tun.renderOrder = 2;
+  mag.tunG = new THREE.Group(); mag.tunG.add(mag.tun); mag.tunG.visible = false; scene.add(mag.tunG);
+  // chaque ligne a une place dans le cadre (u, v en -1..1, un peu plus vers les bords) : on la voit toujours, quelle que soit sa profondeur
+  mag.tunD = Array.from({ length: N }, () => { const a = Math.random() * Math.PI * 2, r = 0.18 + Math.pow(Math.random(), 0.7) * 0.9;
+    return { u: Math.cos(a) * r, v: Math.sin(a) * r, z: Math.random(), w: 0.02 + Math.random() * 0.09, acc: Math.random() < 0.08 }; });
+  // anneau : graduations en arc autour de la molette (DOM, net a toutes les resolutions)
+  const el = document.createElement('div'); el.id = 'magRing';
+  el.innerHTML = '<div class="mr-ticks"></div><div class="mr-lbl"><b>0</b><span>lines / s</span><em>Ratchet</em></div>';
+  document.body.appendChild(el); mag.ringEl = el;
+  const T = el.querySelector('.mr-ticks'), NT = 54;
+  for (let i = 0; i < NT; i++) { const t = document.createElement('i'); T.appendChild(t); mag.ring.push(t); }
+  mag.ringV = new Float32Array(NT);
+  mag.built = true;
+}
+function codeStrip() {   // toutes les lignes dessinees une fois dans une bande : chaque image ne fait que la recopier (pas de flou canvas, couteux)
+  if (mag.strip) return mag.strip;
+  const lh = 46, L = CODE_LINES.length, c = document.createElement('canvas'); c.width = 900; c.height = L * lh; const x = c.getContext('2d');
+  x.font = '500 27px "SF Mono", ui-monospace, Menlo, monospace'; x.textBaseline = 'middle';
+  CODE_LINES.forEach((s, n) => {
+    const y = n * lh + lh / 2;
+    x.fillStyle = 'rgba(0,0,0,.28)'; x.textAlign = 'right'; x.fillText(String(n + 1), 98, y); x.textAlign = 'left';
+    const ind = s.match(/^ */)[0].length, body = s.trim();
+    x.fillStyle = body.startsWith('//') ? '#8a8d93' : /^(import|export|const|function|async|for|if|else|return)/.test(body) ? '#1a1b1e' : '#3b3d42';
+    x.fillText(body, 128 + ind * 16, y);
+  });
+  return (mag.strip = { c, lh, H: L * lh });
+}
+function drawCode(off, blur, stopK, hyperOn) {
+  const { c, x } = mag.code, W = c.width, H = c.height, top = 112, bot = H - 30, st = codeStrip();
+  const key = off.toFixed(2) + '|' + blur.toFixed(1) + '|' + stopK.toFixed(2) + '|' + hyperOn;
+  if (key === mag.codeKey) return; mag.codeKey = key;
+  x.clearRect(0, 0, W, H);
+  x.fillStyle = 'rgba(255,255,255,.97)'; x.beginPath(); x.roundRect(3, 3, W - 6, H - 6, 42); x.fill();
+  x.strokeStyle = 'rgba(0,0,0,.08)'; x.lineWidth = 3; x.stroke();
+  ['#ff5f57', '#febc2e', '#28c840'].forEach((col, i) => { x.fillStyle = col; x.beginPath(); x.arc(52 + i * 34, 56, 10, 0, Math.PI * 2); x.fill(); });
+  x.fillStyle = 'rgba(0,0,0,.5)'; x.font = '500 26px Brown, sans-serif'; x.letterSpacing = '2px'; x.fillText('roadmap.js', 170, 65);
+  x.textAlign = 'right'; x.fillStyle = hyperOn ? '#00a383' : 'rgba(0,0,0,.4)'; x.fillText(hyperOn ? 'HYPER-FAST' : 'RATCHET', W - 46, 65); x.textAlign = 'left'; x.letterSpacing = '0px';
+  x.fillStyle = 'rgba(0,0,0,.07)'; x.fillRect(0, 96, W, 2);
+  x.save(); x.beginPath(); x.rect(0, top - 8, W, bot - top + 8); x.clip();
+  const mid = (top + bot) / 2, lh = st.lh;
+  if (stopK > 0.01) { x.fillStyle = `rgba(2,253,207,${0.32 * stopK})`; x.fillRect(0, mid - lh / 2, W, lh); x.fillStyle = `rgba(0,190,155,${stopK})`; x.fillRect(0, mid - lh / 2, 8, lh); }
+  // la ligne « off » est au centre ; la bande se repete
+  const y0 = mid - lh / 2 - (((off % CODE_LINES.length) + CODE_LINES.length) % CODE_LINES.length) * lh;
+  const ghosts = blur > 0.6 ? Math.min(6, 2 + Math.round(blur / 2)) : 1;
+  for (let g = 0; g < ghosts; g++) {
+    x.globalAlpha = ghosts > 1 ? (g === 0 ? 0.55 : 0.35 / g) : 1;
+    const dy = g * blur * 2.2;
+    for (let k = -1; k <= 2; k++) x.drawImage(st.c, 0, y0 + k * st.H - dy);
+  }
+  x.globalAlpha = 1; x.restore();
+  x.globalCompositeOperation = 'destination-out';
+  let g = x.createLinearGradient(0, top - 8, 0, top + 90); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, top - 8, W, 98);
+  g = x.createLinearGradient(0, bot - 110, 0, bot); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)'); x.fillStyle = g; x.fillRect(0, bot - 110, W, 112);
+  x.globalCompositeOperation = 'source-over';
+  mag.code.t.needsUpdate = true;
+}
+function drawOdo(val, speed, hyperOn) {
+  const key = val.toFixed(2) + '|' + speed.toFixed(2) + '|' + hyperOn; if (key === mag.odoKey) return; mag.odoKey = key;
+  const { c, x } = mag.odo, W = c.width, H = c.height, D = 5, cw = 250, ch = 330, x0 = 70, y0 = 90;
+  x.clearRect(0, 0, W, H);
+  x.font = '700 300px Brown, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (let i = 0; i < D; i++) {
+    const place = Math.pow(10, D - 1 - i), dv = val / place, d = Math.floor(dv) % 10, lower = val % place;
+    const f = place === 1 ? dv - Math.floor(dv) : clamp(lower - (place - 1));
+    const cx = x0 + i * cw + cw / 2, cy = y0 + ch / 2;
+    x.save(); x.beginPath(); x.roundRect(x0 + i * cw + 8, y0, cw - 16, ch, 26); x.fillStyle = 'rgba(255,255,255,.9)'; x.fill(); x.clip();
+    const ghosts = speed > 0.15 && i >= D - 3 ? 4 : 1;
+    for (let k = 0; k < ghosts; k++) {
+      const o = (f + k * 0.08 * speed) * ch;
+      x.globalAlpha = ghosts > 1 ? (k === 0 ? 0.9 : 0.25 / k) : 1;
+      x.fillStyle = hyperOn && i === D - 1 ? '#00b894' : '#111';
+      x.fillText(String(d), cx, cy - o + 18); x.fillText(String((d + 1) % 10), cx, cy + ch - o + 18);
+    }
+    x.globalAlpha = 1;
+    const g = x.createLinearGradient(0, y0, 0, y0 + ch); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.22, 'rgba(255,255,255,0)'); g.addColorStop(0.78, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,.95)');
+    x.fillStyle = g; x.fillRect(x0 + i * cw, y0, cw, ch); x.restore();
+  }
+  x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+  x.font = '500 44px Brown, sans-serif'; x.letterSpacing = '10px'; x.fillStyle = 'rgba(0,0,0,.5)'; x.fillText('LINES', x0 + D * cw + 40, y0 + 120);
+  x.fillStyle = hyperOn ? '#00a383' : '#111'; x.font = '600 40px Brown, sans-serif'; x.fillText(hyperOn ? 'HYPER-FAST' : 'RATCHET', x0 + D * cw + 40, y0 + 200); x.letterSpacing = '0px';
+  mag.odo.t.needsUpdate = true;
+}
+function updateMagUI(dt, hyperOn, speedLps) {
+  if (!F.wheel || !P.wheel) return;
+  if (!mag.built) buildMag();
+  const k = smooth(clamp((cur.wheel - 0.25) / 0.6)), mode = MAGUI.mode;
+  // lignes parcourues : 3 lignes par cran, signe du sens de rotation
+  if (mag.lastA === null) mag.lastA = wheelAngle;
+  const dl = (wheelAngle - mag.lastA) / DETENT * MAGUI.linesPerDetent; mag.lastA = wheelAngle;
+  mag.off += dl; if (k > 0.05) mag.total = Math.min(99999, mag.total + Math.abs(dl));
+  const sp = clamp(speedLps / 1000);
+  mag.stopK += ((!hyperOn && speedLps < 25 ? 1 : 0) - mag.stopK) * damp(dt, 4);
+  mag.blur += ((hyperOn ? 2 + sp * 9 : sp * 3) - mag.blur) * damp(dt, 8);
+  const show = n => mode === n && k > 0.01;
+  const wp = P.wheel.getWorldPosition(_mgP), toCam = _mgT.copy(camera.position).sub(wp), dist = toCam.length(); toCam.normalize();
+  // Code : une page de code a cote de la souris, legerement tournee
+  mag.codeM.visible = show('Code');
+  if (mag.codeM.visible) {
+    drawCode(mag.off, mag.blur, mag.stopK, hyperOn);
+    mag.codeM.material.opacity = k;
+    const vh = 2 * dist * Math.tan(camera.fov * DEG / 2);
+    mag.codeM.position.copy(wp).addScaledVector(camRight, (-0.42 + MAGUI.x) * vh).addScaledVector(camUp, (0.02 + MAGUI.y) * vh).addScaledVector(toCam, (-0.12 + MAGUI.z) * vh);
+    mag.codeM.quaternion.copy(camera.quaternion); mag.codeM.rotateY((16 + MAGUI.rotY) * DEG);
+    const viewH = 2 * dist * Math.tan(camera.fov * DEG / 2);
+    mag.codeM.scale.setScalar(MAGUI.scale * viewH * 0.62 * (0.96 + 0.04 * k));
+  }
+  // Odometre : compteur geant debout derriere la souris (la souris le cache en partie)
+  mag.odoM.visible = show('Odometre');
+  if (mag.odoM.visible) {
+    drawOdo(mag.total, sp, hyperOn);
+    mag.odoM.material.opacity = k; mag.odoM.material.depthTest = true;
+    const vh2 = 2 * dist * Math.tan(camera.fov * DEG / 2);
+    mag.odoM.position.copy(wp).addScaledVector(camRight, (-0.36 + MAGUI.x) * vh2).addScaledVector(camUp, (0.3 + MAGUI.y) * vh2).addScaledVector(toCam, (-0.3 + MAGUI.z) * vh2);
+    mag.odoM.quaternion.copy(camera.quaternion); mag.odoM.rotateY((-12 + MAGUI.rotY) * DEG);
+    mag.odoM.scale.setScalar(MAGUI.scale * 2 * dist * Math.tan(camera.fov * DEG / 2) * 0.55);
+  }
+  // Tunnel : les lignes arrivent du fond, derriere la souris, et s'etirent en hyper-fast
+  mag.tunG.visible = show('Tunnel');
+  if (mag.tunG.visible) {
+    mag.tunG.position.copy(camera.position); mag.tunG.quaternion.copy(camera.quaternion);
+    const near = dist + 0.35, far = dist + 9, v = 0.6 + sp * 30 + (hyperOn ? 8 : 0), len = 0.01 + Math.min(1.1, v * 0.035);
+    const tH = Math.tan(camera.fov * DEG / 2), asp = camera.aspect;
+    _mgS.copy(wp).project(camera); const cu = _mgS.x, cv = _mgS.y;   // le tunnel part de la molette
+    const bg = _mgC.set(PAGE && PAGE.bg ? PAGE.bg : '#f2f2f3');
+    mag.tunD.forEach((d, i) => {
+      d.z += v * dt / (far - near); if (d.z > 1) { d.z -= 1; }
+      const z = -(far - d.z * (far - near));
+      const hh = -z * tH, sc = -z / dist;   // taille ramenee a la profondeur : meme epaisseur a l'ecran, plus fine au loin
+      _mgM.compose(_mgS.set((cu + d.u * 1.3) * hh * asp, (cv + d.v * 1.3) * hh, z), _mgQ.identity(), _mgT.set(d.w * sc, 0.0028 * sc, len));
+      mag.tun.setMatrixAt(i, _mgM);
+      const depthFade = Math.pow(d.z, 1.4);   // loin = presque la couleur du fond
+      mag.tun.setColorAt(i, _mgC2.copy(d.acc ? C_ACC : C_DARK).lerp(bg, 1 - depthFade * (0.25 + 0.5 * clamp(0.3 + sp * 2))));
+    });
+    mag.tun.instanceMatrix.needsUpdate = true; if (mag.tun.instanceColor) mag.tun.instanceColor.needsUpdate = true;
+    mag.tun.material.opacity = k;
+  }
+  // Anneau : graduations en arc autour de la molette, un cran = une graduation allumee, traine verte en hyper-fast
+  const ringOn = show('Anneau');
+  mag.ringEl.style.display = ringOn ? 'block' : 'none';
+  if (ringOn) {
+    _mgS.copy(wp).project(camera);
+    const sx = (_mgS.x * 0.5 + 0.5) * innerWidth, sy = (-_mgS.y * 0.5 + 0.5) * innerHeight;
+    const R = 0.13 / (dist * Math.tan(camera.fov * DEG / 2)) * innerHeight / 2 * MAGUI.scale;
+    const el = mag.ringEl; el.style.opacity = k.toFixed(3);
+    el.style.transform = `translate(${(sx + MAGUI.x * 400).toFixed(1)}px, ${(sy - MAGUI.y * 400).toFixed(1)}px)`;
+    const NT = mag.ring.length, cont = wheelAngle / DETENT, lit = ((Math.round(cont) % NT) + NT) % NT;
+    for (let i = 0; i < NT; i++) mag.ringV[i] *= Math.exp(-dt * (hyperOn ? 2.6 : 7));
+    mag.ringV[lit] = 1;
+    mag.ring.forEach((t, i) => {
+      const a = -135 + i / (NT - 1) * 270, v = mag.ringV[i];
+      t.style.transform = `rotate(${a}deg) translateY(${(-R).toFixed(1)}px) scaleY(${(1 + v * 1.4).toFixed(2)})`;
+      t.style.background = v > 0.02 ? `color-mix(in srgb, #02fdcf ${Math.round(v * 100)}%, #ffffff)` : '';
+      t.style.opacity = (0.45 + 0.55 * v).toFixed(2);
+    });
+    el.querySelector('b').textContent = Math.round(speedLps);
+    const em = el.querySelector('em'); em.textContent = hyperOn ? 'Hyper-fast' : 'Ratchet'; em.classList.toggle('on', hyperOn);
+    el.querySelector('.mr-lbl').style.top = (R + 26).toFixed(0) + 'px';
+  }
+}
 
 /* ============================================================
    Silent clicks (WebAudio click synth + waveform) & button press
@@ -4757,7 +5003,8 @@ function updateFlame(dt) {
     // la visibilite vient du DOM : chaque titre s'embrase quand son bloc entre a l'ecran
     let seen = r.width > 1 && r.bottom > innerHeight * 0.06 && r.top < innerHeight * 0.94 ? 1 : 0;
     if (seen && surfK() > 0.01 && f.el.closest('section[data-shot="charge"]')) seen = 0;   // attend la fin du tapis
-    if (seen && dpiLeaving() && f.el.closest('section[data-shot="dpi"]')) seen = 0;   // « Glass is a surface » part des que le tapis commence a s'effacer
+    if (seen && dpiLeaving() && f.el.closest('section[data-shot="dpi"]')) seen = 0;
+    if (seen && f.el.id === 'heroTitle' && document.documentElement.classList.contains('prodbar')) seen = 0;   // V2 : le titre est passe dans la barre du haut   // « Glass is a surface » part des que le tapis commence a s'effacer
     if (!f.on && seen) playFlame(f);
     f.on = seen;
     f.vis += (seen - f.vis) * damp(dt, 6);
@@ -5251,11 +5498,14 @@ const PCUR = { lag: 7 };
 const CLICKAQ = { color: '#ffbf94', colorKeys: '#c3b8ff', intensity: 1.7, light: 0.18, soft: 0.35 };   // aquarelle apres le clic
 const CLICKPOS = { x: -0.26, y: 0.24, z: -0.34, rotX: 7, rotZ: 3 };   // valeurs Julien (20/10)   // souris apres le clic (s'ajoute a la position centree)
 // quadrillage-masque : apparait au sol dans un rayon autour du pointeur (ecran de choix)
-const GMASK = { on: true, radius: 1.3, soft: 0.65, color: '#c4c6ca', tile: 2.25, width: 1, follow: 10 };
+const GMASK = { on: true, stepK: 0.45, stepRadius: 0.75, radius: 1.3, soft: 0.65, color: '#7d8187', tile: 2.25, width: 1.4, follow: 10 };   // V2 : un peu plus marque
 const _gmRay = new THREE.Raycaster(), _gmV = new THREE.Vector2(), _gmHit = new THREE.Vector3(), _gmPl = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-let gmPos = null;
+let gmPos = null, gmStep = 0;
 function updateGridMask(dt, idle) {
-  const u = comboFloorU, want = GMASK.on && idle && heroW > 0.5 && pointer.cx != null ? 1 : 0;
+  const picked = PICK.state === 'mouse' && setupE < 0.01;   // V2 : quadrillage au survol partout sur le parcours de la souris   // V2 : aussi sur la vue « MX Master 4 » apres le clic (tant qu'on est en haut)
+  // pendant les etapes (barre du haut visible) : plus discret et zone plus petite
+  gmStep += ((picked && document.documentElement.classList.contains('prodbar') ? 1 : 0) - gmStep) * damp(dt, 4);
+  const u = comboFloorU, want = GMASK.on && (idle ? heroW > 0.5 : picked) && pointer.cx != null ? lerp(1, GMASK.stepK, gmStep) * (1 - clamp(surfK() * 3)) : 0;   // jamais sur bois / verre / tapis
   u.uMK.value += (want - u.uMK.value) * damp(dt, 5);
   if (u.uMK.value < 0.002) { u.uMK.value = 0; return; }
   _gmV.set((pointer.cx / innerWidth) * 2 - 1, -(pointer.cy / innerHeight) * 2 + 1);
@@ -5265,7 +5515,7 @@ function updateGridMask(dt, idle) {
     gmPos.x += (_gmHit.x - gmPos.x) * damp(dt, GMASK.follow); gmPos.y += (_gmHit.z - gmPos.y) * damp(dt, GMASK.follow);
     u.uMP.value.copy(gmPos);
   }
-  u.uMR.value = GMASK.radius; u.uMSoft.value = GMASK.soft; u.uMCol.value.set(GMASK.color);
+  u.uMR.value = lerp(GMASK.radius, GMASK.stepRadius, gmStep); u.uMSoft.value = GMASK.soft; u.uMCol.value.set(GMASK.color);
   u.uTile.value = Math.max(0.05, GMASK.tile); u.uWidth.value = GMASK.width;
 }   // retard du texte « Choose a product » (plus petit = plus de retard)
 const pkV = V();
@@ -5479,6 +5729,41 @@ function backToPick() {
   whooshPick();
 }
 $('#changeProduct')?.addEventListener('click', e => { e.stopPropagation(); audio(); backToPick(); });
+// barre produit : des qu'on quitte l'ouverture (souris choisie), le titre monte en haut en petit
+const PRODBAR = { at: 0.35 };   // part de la hauteur d'ecran scrollee avant que la barre apparaisse
+(function prodBarLoop() {
+  const on = PICK.state === 'mouse' && document.documentElement.classList.contains('picked') && setupE < 0.01 && scrollY > innerHeight * PRODBAR.at;
+  document.documentElement.classList.toggle('prodbar', on);
+  requestAnimationFrame(prodBarLoop);
+})();
+$('#prodBar .pb-cart')?.addEventListener('click', e => { e.stopPropagation(); audio(); pulse('tick'); });
+$$('#prodBar .pb-prod').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); audio(); if (b.dataset.p === 'mouse') lenis.scrollTo(0, { duration: 1.4 }); else pulse('tick'); }));
+/* V2 : focus sur la MX Master 4, tout en haut de la page : scroller vers le haut ramene doucement a l'apercu des 2 produits.
+   Il faut etre arrive en haut depuis un instant (l'inertie d'un scroll qui remonte ne declenche rien) et un vrai geste vers le haut. */
+const BACKUP = { on: true, wait: 350, need: 70 };
+const bu = { topSince: 0, acc: 0, last: 0, ty: null };
+function backUpReady() {
+  if (!BACKUP.on || PICK.state !== 'mouse' || !document.documentElement.classList.contains('picked') || setupE > 0.01) return false;
+  const top = (lenis.scroll ?? scrollY) <= 2;
+  if (!top) { bu.topSince = 0; return false; }
+  if (!bu.topSince) bu.topSince = performance.now();
+  return performance.now() - bu.topSince >= BACKUP.wait;
+}
+addEventListener('wheel', e => {
+  const now = performance.now();
+  bu.acc *= Math.exp(-(now - bu.last) / 900);   // un geste vers le haut s'additionne, puis s'oublie en ~1 s
+  bu.last = now;
+  if (!backUpReady() || e.deltaY >= 0) { if (e.deltaY > 0) bu.acc = 0; return; }
+  bu.acc += -e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+  if (bu.acc >= BACKUP.need) { bu.acc = 0; bu.topSince = 0; audio(); backToPick(); }
+}, { passive: true });
+addEventListener('touchstart', e => { bu.ty = e.touches[0].clientY; }, { passive: true });
+addEventListener('touchend', e => {
+  if (bu.ty === null) return; const dy = (e.changedTouches[0]?.clientY ?? bu.ty) - bu.ty; bu.ty = null;
+  if (dy > 60 && backUpReady()) { bu.topSince = 0; backToPick(); }
+}, { passive: true });
+addEventListener('keydown', e => { if ((e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'Home') && backUpReady()) { bu.topSince = 0; backToPick(); } });
+setInterval(() => { backUpReady(); }, 100);   // note l'instant d'arrivee en haut meme sans evenement
 
 /* ============================================================
    Click routing (3D picks)
@@ -5576,6 +5861,67 @@ function buildNav() {
     nav.appendChild(b); s.dot = b; byName[s.name] = b;
   });
   shots.forEach(s => { if (s.name === 'days') s.dot = byName.charge || null; });
+  buildRuler();
+}
+
+/* V2 — regle de chapitres : chaque graduation = un bout de la page ; sous le pointeur elles grossissent (vague douce),
+   la pastille verte donne le chapitre, un clic y va. La barre verte suit la position dans la page. */
+const RULER = { ticks: 36, radius: 24, grow: 1.7, pad: 11 };
+const ruler = { el: null, pill: null, ticks: [], hy: 0, py: 0, on: 0, k: 0, chaps: [], y0: 0, y1: 1, raf: 0 };
+function rulerChapters() {
+  const seen = new Set(), out = [];
+  shots.forEach(s => { if (!s.dot || seen.has(s.dot)) return; seen.add(s.dot); out.push({ s, label: s.dot.querySelector('span')?.textContent || s.label }); });
+  // fin de chaque chapitre = debut du suivant ; « 70 days » est dans Fast charge
+  const last = shots.filter(s => s.dot).pop();
+  ruler.y0 = out.length ? out[0].s.start : 0; ruler.y1 = last ? last.end : 1;
+  ruler.chaps = out;
+}
+function rulerY(f) { return ruler.y0 + f * (ruler.y1 - ruler.y0); }
+function rulerChapterAt(f) { const y = rulerY(f); let c = ruler.chaps[0]; for (const ch of ruler.chaps) if (y >= ch.s.start - 2) c = ch; return c; }
+function buildRuler() {
+  if (ruler.el) return;
+  const el = document.createElement('div'); el.id = 'ruler';
+  el.innerHTML = '<div class="rl-glow"></div><div class="rl-cur"></div>';
+  const pill = document.createElement('div'); pill.id = 'rulerPill';
+  document.body.append(el, pill);
+  for (let i = 0; i < RULER.ticks; i++) { const t = document.createElement('i'); t.className = 'rl-t' + (i % 4 === 0 ? ' maj' : ''); el.appendChild(t); ruler.ticks.push(t); }
+  Object.assign(ruler, { el, pill });
+  const H = () => el.clientHeight, fAt = y => clamp((y - RULER.pad) / Math.max(1, H() - RULER.pad * 2));
+  const move = e => { const r = el.getBoundingClientRect(); ruler.hy = e.clientY - r.top; ruler.on = 1; };
+  el.addEventListener('pointerenter', move); el.addEventListener('pointermove', move);
+  el.addEventListener('pointerleave', () => { ruler.on = 0; });
+  el.addEventListener('click', e => { e.stopPropagation(); rulerChapters(); const r = el.getBoundingClientRect(); lenis.scrollTo(rulerY(fAt(e.clientY - r.top)), { duration: 1.6 }); });
+  let last = performance.now();
+  const tick = now => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rulerChapters();   // les positions changent au redimensionnement : relues a chaque image (quelques sections seulement)
+    const h = H(), span = h - RULER.pad * 2;
+    ruler.k += (ruler.on - ruler.k) * (1 - Math.exp(-dt * 10));
+    ruler.py += (ruler.hy - ruler.py) * (1 - Math.exp(-dt * 18));
+    // debut de chaque chapitre : graduation verte
+    const chF = ruler.chaps.map(c => clamp((c.s.start - ruler.y0) / Math.max(1, ruler.y1 - ruler.y0)));
+    ruler.ticks.forEach((t, i) => {
+      const f = i / (RULER.ticks - 1), y = RULER.pad + f * span;
+      const d = (y - ruler.py) / RULER.radius, w = Math.exp(-d * d) * ruler.k;
+      const isCh = chF.some(c => Math.abs(c - f) < 0.5 / (RULER.ticks - 1));
+      t.classList.toggle('ch', isCh);
+      t.style.top = y.toFixed(1) + 'px';
+      t.style.transform = `scaleX(${(1 + RULER.grow * w).toFixed(3)}) scaleY(${(1 + 0.5 * w).toFixed(3)})`;
+      t.style.opacity = isCh ? '' : (t.classList.contains('maj') ? 0.45 : 0.28) + 0.62 * w;
+    });
+    const fCur = clamp((scrollY - ruler.y0) / Math.max(1, ruler.y1 - ruler.y0));
+    el.firstChild.style.top = ruler.py + 'px'; el.firstChild.style.opacity = ruler.k.toFixed(3);
+    el.children[1].style.top = (RULER.pad + fCur * span).toFixed(1) + 'px';
+    // pastille : a gauche de la regle, a la hauteur du pointeur
+    const r = el.getBoundingClientRect(), ch = rulerChapterAt(fAt(ruler.py));
+    if (ch && ruler.pill.textContent !== ch.label) ruler.pill.textContent = ch.label;
+    ruler.pill.style.top = (r.top + ruler.py).toFixed(1) + 'px';
+    ruler.pill.style.right = (innerWidth - r.left + 14).toFixed(1) + 'px';
+    ruler.pill.classList.toggle('on', ruler.on > 0 && !!ch);
+    ruler.raf = requestAnimationFrame(tick);
+  };
+  ruler.raf = requestAnimationFrame(tick);
+  addEventListener('resize', () => { ruler.chaps = []; });
 }
 
 // plus d'apparition en decale des textes : ils sont la, simplement
@@ -5974,6 +6320,8 @@ ghv.add(HOVER, 'dim', 0, 1, 0.01).name('Attenuation texte autre produit');
   const ggm = gpp.addFolder('Grille au survol (masque)');
   ggm.add(GMASK, 'on').name('Actif');
   ggm.add(GMASK, 'radius', 0.2, 5, 0.01).name('Rayon');
+  ggm.add(GMASK, 'stepK', 0, 1, 0.01).name('Etapes : intensite');
+  ggm.add(GMASK, 'stepRadius', 0.2, 5, 0.01).name('Etapes : rayon');
   ggm.add(GMASK, 'soft', 0, 1, 0.01).name('Douceur du bord');
   ggm.addColor(GMASK, 'color').name('Couleur des lignes');
   ggm.add(GMASK, 'tile', 0.2, 10, 0.05).name('Taille des carreaux');
@@ -5992,7 +6340,14 @@ ghv.add(HOVER, 'dim', 0, 1, 0.01).name('Attenuation texte autre produit');
 }
 {
   const gw3 = gui.addFolder('MagSpeed — widget 3D lignes/s'); gw3.close();
-  gw3.add(WUI, 'on').name('Actif');
+  gw3.add(MAGUI, 'mode', MAGUI_MODES).name('UI (Carte / Code / Odometre / Tunnel / Anneau)');
+  gw3.add(MAGUI, 'x', -1, 1, 0.005).name('UI : decalage X');
+  gw3.add(MAGUI, 'y', -1, 1, 0.005).name('UI : decalage Y');
+  gw3.add(MAGUI, 'z', -1, 1, 0.005).name('UI : profondeur');
+  gw3.add(MAGUI, 'rotY', -60, 60, 0.5).name('UI : rotation');
+  gw3.add(MAGUI, 'scale', 0.3, 2.5, 0.01).name('UI : taille');
+  gw3.add(MAGUI, 'linesPerDetent', 1, 8, 1).name('Lignes par cran');
+  gw3.add(WUI, 'on').name('Carte : active');
   gw3.add(WUI, 'w', 0.1, 1, 0.01).name('Taille');
   gw3.add(WUI, 'up', -0.2, 0.6, 0.005).name('Hauteur au-dessus de la molette');
   gw3.add(WUI, 'side', -0.6, 0.6, 0.005).name('Decalage lateral');
